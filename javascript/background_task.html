@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <title>Simple JS Background Task</title>
+    <script type="text/javascript">
+      function addBackgroundTask(task, intervalSeconds) {
+        function _runner() {
+          for(var i = 0; i < window.bgTasks.tasks.length; i++) {
+            if(window.bgTasks.loop % window.bgTasks.tasks[i].interval == 0) {
+              window.bgTasks.tasks[i].task();
+            }
+          }
+          window.bgTasks.loop += 1;
+        }
+        window.bgTasks = window.bgTasks || {tasks: [], id: null, loop: 0};
+        window.bgTasks.tasks.push({task: task, interval: intervalSeconds});
+        window.bgTasks.id = window.bgTasks.id || window.setInterval(_runner, 1000);
+      }
+    </script>
+  </head>
+  <body>
+    <script>
+      addBackgroundTask(function() {console.log("task1")}, 1);
+      addBackgroundTask(function() {console.log("task2")}, 2);
+    </script>
+    <h2>Simple JavaScript Background Task Runner</h2>
+    <p>
+      Creates a background service in JavaScript that executes background jobs
+      on the provided interval with second-granularity
+    </p>
+  </body>
+</html>
