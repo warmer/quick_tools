@@ -22,22 +22,26 @@ module SimpleAws
 
     def get(key)
       path = File.join('/', key)
-      uri = URI.parse("http://#{@bucket}.s3.amazonaws.com#{path}")
+      uri = URI.parse("https://#{@bucket}.s3.amazonaws.com#{path}")
       req = Net::HTTP::Get.new(uri)
       @sig.signed_headers(:get, uri, {}).each {|k, v| req[k] = v}
-      res = Net::HTTP.start(uri.hostname, uri.port) {|http| http.request(req)}
+      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+        http.request(req)
+      end
       raise "Invalid response from AWS: #{res.code}" unless res.code.to_s == '200'
       res.body
     end
 
     def put(key, content)
       path = File.join('/', key)
-      uri = URI.parse("http://#{@bucket}.s3.amazonaws.com#{path}")
+      uri = URI.parse("https://#{@bucket}.s3.amazonaws.com#{path}")
       req = Net::HTTP::Put.new(uri)
       req.body = content
       headers = {'Content-Type' => 'binary/octet-stream'}
       @sig.signed_headers(:put, uri, headers, content).each {|k, v| req[k] = v}
-      res = Net::HTTP.start(uri.hostname, uri.port) {|http| http.request(req)}
+      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+        http.request(req)
+      end
       raise "Invalid response from AWS: #{res.code}" unless res.code.to_s == '200'
       puts res.inspect
       res.body
@@ -45,10 +49,12 @@ module SimpleAws
 
     def list(prefix)
       prefix = prefix[1..-1] if prefix[0] == '/'
-      uri = URI.parse("http://#{@bucket}.s3.amazonaws.com/?list-type=2&prefix=#{prefix}")
+      uri = URI.parse("https://#{@bucket}.s3.amazonaws.com/?list-type=2&prefix=#{prefix}")
       req = Net::HTTP::Get.new(uri)
       @sig.signed_headers(:get, uri, {}).each {|k, v| req[k] = v}
-      res = Net::HTTP.start(uri.hostname, uri.port) {|http| http.request(req)}
+      res = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+        http.request(req)
+      end
       raise "Invalid response from AWS: #{res.code}" unless res.code.to_s == '200'
       contents = res.body
       contents = contents.gsub(/<Contents>/, "\n<Contents>").split("\n")
@@ -68,8 +74,8 @@ module SimpleAws
     def initialize(opts = {})
       @service = opts[:service]
       @region = opts[:region] || 'us-east-1'
-      @key_id = opts[:key_id] || ENV[:AWS_ACCESS_KEY_ID]
-      @secret = opts[:secret] || ENV[:AWS_SECRET_ACCESS_KEY]
+      @key_id = opts[:key_id] || ENV['AWS_ACCESS_KEY_ID']
+      @secret = opts[:secret] || ENV['AWS_SECRET_ACCESS_KEY']
       raise 'Must provide :service' unless @service
       raise 'Must provide :key_id or set ENV[AWS_ACCESS_KEY_ID]' unless @key_id
       raise 'Must provide :secret or set ENV[AWS_SECRET_ACCESS_KEY]' unless @secret
