@@ -145,7 +145,7 @@ done
 
 Note that I use `QEMU emulator version 2.0.0 (Debian 2.0.0+dfsg-2ubuntu1.30)`
 
-This is how I start windows 7 in a VM:
+### Windows 7 with PCI passthrough
 
 ```
 sudo qemu-system-x86_64 \
@@ -178,6 +178,32 @@ Find with:
 ```
 #(qemu) info usb
 #(qemu) info usbhost
+```
+
+Installing Windows 7 was done by attaching a CDROM ISO:
+
+```
+sudo qemu-system-x86_64 \
+  -enable-kvm -cpu host -smp cores=2,threads=1,sockets=1 -m 4096 \
+  -device vfio-pci,host=01:00.0 \
+  -device vfio-pci,host=01:00.1 \
+  -boot d -cdrom ../virtual_cds/win7x64u.iso \
+  -hda /dev/mint-vg/windowsvg
+```
+
+The above command could be modified to attach any other CD at boot-time by merely
+changing the iso given to the `-cdrom` option.
+
+### Live VMs
+
+Booting a VM from a live CD without persistence merely requires using the "boot"
+device without any storage:
+
+```
+sudo qemu-system-x86_64 \
+  -enable-kvm -cpu host -smp cores=2,threads=1,sockets=1 -m 5120 \
+  -monitor stdio \
+  -boot d -cdrom ../virtual_cds/kali-linux-1.1.0a-amd64.iso
 ```
 
 ## Resources
