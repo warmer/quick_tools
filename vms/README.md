@@ -72,73 +72,35 @@ echo 1002 6739 | sudo tee /sys/bus/pci/drivers/vfio-pci/new_id
 echo 1002 aa88 | sudo tee /sys/bus/pci/drivers/vfio-pci/new_id
 ```
 
-### Helper Scripts
+### PCI passthrough Helper Scripts
 
 I created two scripts to help me correctly bind drivers for passthrough.
 With these scripts, I do NOT set `/sys/bus/pci/drivers` and
 `/sys/bus/pci/devices` manually as specified above.
 
-The first is `device_bind.sh`, which will set the drivers for devices at a
+The first is [device_bind.sh](./device_bind.sh), which will set the drivers for devices at a
 given PCI address (eg: `sudo ./device_bind.sh 0000:01:00.0`)
 
-```
-#!/bin/bash
-
-modprobe vfio-pci
-for dev in "$@"; do
-  vendor=$(cat /sys/bus/pci/devices/$dev/vendor | grep -oP '[a-f0-9]*$')
-  device=$(cat /sys/bus/pci/devices/$dev/device | grep -oP '[a-f0-9]*$')
-  echo "vendor $vendor"
-  echo "device $device"
-  if [ -e /sys/bus/pci/devices/$dev/driver ]; then
-    echo "$dev > /sys/bus/pci/devices/$dev/driver/unbind"
-    echo $dev > /sys/bus/pci/devices/$dev/driver/unbind
-  fi
-  echo "$vendor $device > /sys/bus/pci/drivers/vfio-pci/new_id"
-  echo $vendor $device > /sys/bus/pci/drivers/vfio-pci/new_id
-done
-```
-
-The other just calls `device_bind.sh` with all of the devices that I want to
+The other, [enable_passthrough.sh](./enable_passthrough.sh), just calls `device_bind.sh` with all of the devices that I want to
 configure for passthrough:
 
-```
-#!/bin/bash
-
-echo './device_bind.sh 0000:01:00.0'
-sudo ./device_bind.sh 0000:01:00.0
-
-echo
-echo './device_bind.sh 0000:01:00.1'
-sudo ./device_bind.sh 0000:01:00.1
-
-echo
-echo './device_bind.sh 0000:02:00.0'
-sudo ./device_bind.sh 0000:02:00.0
-
-echo
-echo './device_bind.sh 0000:02:00.1'
-sudo ./device_bind.sh 0000:02:00.1
-```
-
-I also have a script (`lsgroup.sh`) that shows the addresses of all PCI
+I also have a script [lsgroup.sh](./lsgroup.sh) that shows the addresses of all PCI
 devices and their corresponding iommu groups. This script is used just for
 info and troubleshooting.
 
+### Networking Helper Scripts
+
+[cubicool/qemu-net](https://github.com/cubicool/qemu-net) is a utility that
+simplifies TUN/TAP interface creation/deletion and bridging.
+
+If you want to redirect traffic on the host machine to a specific interface
+(Linux kernel IP routing table manipulation):
 ```
-#!/bin/sh
+sudo route add -net 10.10.2.0 netmask 255.255.255.0 dev tap01
+sudo route add -net 10.10.2.0 netmask 255.255.255.0 gw 10.10.2.1
+# continue to route traffic by default to your main host interface
+sudo route add default gw 10.1.1.1 eth0
 
-BASE="/sys/kernel/iommu_groups"
-
-for i in $(find $BASE -maxdepth 1 -mindepth 1 -type d); do
-  GROUP=$(basename $i)
-  echo "### Group $GROUP ###"
-  for j in $(find $i/devices -type l); do
-    DEV=$(basename $j)
-    echo -n "    "
-    lspci -s $DEV
-  done
-done
 ```
 
 ## Example QEMU commands
