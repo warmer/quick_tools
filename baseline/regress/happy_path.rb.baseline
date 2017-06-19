@@ -1,0 +1,83 @@
+############################
+# Run with a list of files #
+############################
+
+./baseline.rb tests/*
+non_executable.rb                                             [ NOT EXECUTABLE ]
+no_baseline.rb                                                       [ MISSING ]
+no_baseline_raises_error.rb                                          [ MISSING ]
+baselined_out_of_date.rb                                              [ FAILED ]
+1c1
+< No baseline!
+---
+> Out of date!
+baselined_raises_error.rb                                             [ FAILED ]
+======== STDERR ========
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+up_to_date.rb                                                         [ PASSED ]
+Passed: 1; Failed: 2; Skipped: 3
+########################
+# Run with a directory #
+########################
+
+./baseline.rb tests
+no_baseline.rb                                                       [ MISSING ]
+no_baseline_raises_error.rb                                          [ MISSING ]
+baselined_out_of_date.rb                                              [ FAILED ]
+1c1
+< No baseline!
+---
+> Out of date!
+baselined_raises_error.rb                                             [ FAILED ]
+======== STDERR ========
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+up_to_date.rb                                                         [ PASSED ]
+Passed: 1; Failed: 2; Skipped: 2
+########################
+# Run with a full diff #
+########################
+
+./baseline.rb -f tests
+no_baseline.rb                                                       [ MISSING ]
+no_baseline_raises_error.rb                                          [ MISSING ]
+baselined_out_of_date.rb                                              [ FAILED ]
+-No baseline!
++Out of date!
+baselined_raises_error.rb                                             [ FAILED ]
+ Baselined!
+======== STDERR ========
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+up_to_date.rb                                                         [ PASSED ]
+Passed: 1; Failed: 2; Skipped: 2
+###############
+# Run quietly #
+###############
+
+./baseline.rb -q tests
+no_baseline.rb                                                       [ MISSING ]
+no_baseline_raises_error.rb                                          [ MISSING ]
+baselined_out_of_date.rb                                              [ FAILED ]
+baselined_raises_error.rb                                             [ FAILED ]
+up_to_date.rb                                                         [ PASSED ]
+Passed: 1; Failed: 2; Skipped: 2
+################
+# Run silently #
+################
+
+./baseline.rb -s tests
+
+######################
+# Update a directory #
+######################
+
+./baseline.rb -b tests
+baselined_out_of_date.rb                                             [ UPDATED ]
+baselined_raises_error.rb                                             [ FAILED ]
+======== STDERR ========
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+no_baseline.rb                                                       [ UPDATED ]
+no_baseline_raises_error.rb                                           [ FAILED ]
+======== STDERR ========
+[base]/tests/no_baseline_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+up_to_date.rb                                                         [ PASSED ]
+Passed: 1; Failed: 2; Updated: 2
