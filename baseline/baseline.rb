@@ -161,5 +161,5 @@ if __FILE__ == $PROGRAM_NAME
   results = Baseline.run_tests(files, options)
   puts Baseline.summarize(results) unless options[:silent]
   failures = results.select {|result| result[:status] == :failed}.count
-  exit([failures, 127].max)
+  exit([failures, 127].min)
 end

@@ -1,0 +1,26 @@
+################################################################################
+# Run with a directory                                                         #
+################################################################################
+
+./baseline.rb tests
+no_baseline.rb                                                       [ MISSING ]
+no_baseline_raises_error.rb                                          [ MISSING ]
+baselined_out_of_date.rb                                              [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+baselined_out_of_date_with_error.rb                                   [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+======== STDERR ========
+[base]/tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+baselined_raises_error.rb                                             [ FAILED ]
+======== STDERR ========
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+up_to_date.rb                                                         [ PASSED ]
+Passed: 1; Failed: 3; Skipped: 2
+Status code: 3
+

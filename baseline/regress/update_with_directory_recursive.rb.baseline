@@ -1,0 +1,24 @@
+################################################################################
+# Update list of files/directories, recursive                                  #
+################################################################################
+
+./baseline.rb -b -r tests
+baselined_out_of_date.rb                                             [ UPDATED ]
+baselined_out_of_date_with_error.rb                                   [ FAILED ]
+======== STDERR ========
+[base]/tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+baselined_raises_error.rb                                             [ FAILED ]
+======== STDERR ========
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+no_baseline.rb                                                       [ UPDATED ]
+up_to_date.rb                                                         [ PASSED ]
+no_baseline.rb                                                       [ UPDATED ]
+up_to_date.rb                                                         [ PASSED ]
+no_baseline.rb                                                       [ UPDATED ]
+no_baseline_raises_error.rb                                           [ FAILED ]
+======== STDERR ========
+[base]/tests/no_baseline_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+up_to_date.rb                                                         [ PASSED ]
+Passed: 3; Failed: 3; Updated: 4
+Status code: 3
+
