@@ -3,12 +3,12 @@
 ################################################################################
 
 ./baseline.rb -q tests
-no_baseline.rb                                                       [ MISSING ]
-no_baseline_raises_error.rb                                          [ MISSING ]
-baselined_out_of_date.rb                                              [ FAILED ]
-baselined_out_of_date_with_error.rb                                   [ FAILED ]
-baselined_raises_error.rb                                             [ FAILED ]
-up_to_date.rb                                                         [ PASSED ]
+tests/no_baseline.rb                                                 [ MISSING ]
+tests/no_baseline_raises_error.rb                                    [ MISSING ]
+tests/baselined_out_of_date.rb                                        [ FAILED ]
+tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
+tests/baselined_raises_error.rb                                       [ FAILED ]
+tests/up_to_date.rb                                                   [ PASSED ]
 Passed: 1; Failed: 3; Skipped: 2
 Status code: 3
 
@@ -17,7 +17,7 @@ Status code: 3
 ################################################################################
 
 ./baseline.rb -q tests/up_to_date.rb
-up_to_date.rb                                                         [ PASSED ]
+tests/up_to_date.rb                                                   [ PASSED ]
 Passed: 1
 Status code: 0
 
@@ -26,7 +26,7 @@ Status code: 0
 ################################################################################
 
 ./baseline.rb -q tests/baselined_out_of_date.rb
-baselined_out_of_date.rb                                              [ FAILED ]
+tests/baselined_out_of_date.rb                                        [ FAILED ]
 Failed: 1
 Status code: 1
 
@@ -35,7 +35,7 @@ Status code: 1
 ################################################################################
 
 ./baseline.rb -q tests/non_executable.rb
-non_executable.rb                                             [ NOT EXECUTABLE ]
+tests/non_executable.rb                                       [ NOT EXECUTABLE ]
 Skipped: 1
 Status code: 0
 

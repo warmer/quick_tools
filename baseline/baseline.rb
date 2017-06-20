@@ -55,13 +55,12 @@ class Baseline
 
   def self.log_result(file, result)
     result = "[ #{result} ]"
-    name = File.basename(file)
-    $stdout.puts "#{name.ljust(79 - result.length, ' ')} #{result}"
+    $stdout.puts "#{file.ljust(79 - result.length, ' ')} #{result}"
     $stdout.flush
   end
 
   def self.start_test_log(file)
-    $stdout.print "#{File.basename(file).ljust(68, ' ')} "
+    $stdout.print "#{file.ljust(68, ' ')} "
     $stdout.flush
   end
 
@@ -156,7 +155,7 @@ if __FILE__ == $PROGRAM_NAME
     Dir.glob(pattern).select { |f| File.file?(f) && File.executable?(f) }
   end
   files += dirs.flatten
-  files = files.map { |f| File.expand_path(f) }.sort.uniq
+  files = files.sort.uniq
 
   results = Baseline.run_tests(files, options)
   puts Baseline.summarize(results) unless options[:silent]

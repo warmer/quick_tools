@@ -3,27 +3,27 @@
 ################################################################################
 
 ./baseline.rb -f tests
-no_baseline.rb                                                       [ MISSING ]
-no_baseline_raises_error.rb                                          [ MISSING ]
-baselined_out_of_date.rb                                              [ FAILED ]
+tests/no_baseline.rb                                                 [ MISSING ]
+tests/no_baseline_raises_error.rb                                    [ MISSING ]
+tests/baselined_out_of_date.rb                                        [ FAILED ]
  This is the same
  This line added
 -This line changed
 +This line updated
  This is the same
-baselined_out_of_date_with_error.rb                                   [ FAILED ]
+tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
  This is the same
  This line added
 -This line changed
 +This line updated
  This is the same
 ======== STDERR ========
-[base]/tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
-baselined_raises_error.rb                                             [ FAILED ]
+tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+tests/baselined_raises_error.rb                                       [ FAILED ]
  Baselined!
 ======== STDERR ========
-[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
-up_to_date.rb                                                         [ PASSED ]
+tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+tests/up_to_date.rb                                                   [ PASSED ]
 Passed: 1; Failed: 3; Skipped: 2
 Status code: 3
 
