@@ -1,0 +1,41 @@
+################################################################################
+# Print the help for baseline                                                  #
+################################################################################
+
+./baseline.rb --help
+Usage: ./baseline.rb [options] FILE...
+Runs the selected files, captures/compares the output
+Includes all executable files within given directories
+    -b                               Update/create baselines
+    -q                               Quiet: do not print diff/stderr on failures
+    -s                               Silent: do not print any status during testing
+    -r                               Recursively scan any given directories for tests
+    -f                               Adds all baseline context to any diff
+    -h, -?, --help                   Show help
+Status code: 0
+
+################################################################################
+# Run baseline with an invalid argument                                        #
+################################################################################
+
+./baseline.rb -m
+Error - invalid option: -m
+Usage: ./baseline.rb [options] FILE...
+Runs the selected files, captures/compares the output
+Includes all executable files within given directories
+    -b                               Update/create baselines
+    -q                               Quiet: do not print diff/stderr on failures
+    -s                               Silent: do not print any status during testing
+    -r                               Recursively scan any given directories for tests
+    -f                               Adds all baseline context to any diff
+    -h, -?, --help                   Show help
+Status code: 255
+
+################################################################################
+# Run baseline with no arguments                                               #
+################################################################################
+
+./baseline.rb
+No tests to run
+Status code: 0
+
