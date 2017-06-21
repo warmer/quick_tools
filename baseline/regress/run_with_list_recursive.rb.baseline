@@ -2,7 +2,7 @@
 # Run with a list of files/directories, recursive                              #
 ################################################################################
 
-./baseline.rb -r tests/*
+./baseline -r tests/*
 tests/non_executable.rb                                       [ NOT EXECUTABLE ]
 tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
 tests/nested/no_baseline.rb                                          [ MISSING ]

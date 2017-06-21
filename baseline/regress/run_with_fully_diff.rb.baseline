@@ -2,7 +2,7 @@
 # Run with a full diff                                                         #
 ################################################################################
 
-./baseline.rb -f tests
+./baseline -f tests
 tests/no_baseline.rb                                                 [ MISSING ]
 tests/no_baseline_raises_error.rb                                    [ MISSING ]
 tests/baselined_out_of_date.rb                                        [ FAILED ]

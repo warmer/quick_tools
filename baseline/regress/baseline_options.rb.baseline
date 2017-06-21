@@ -2,8 +2,8 @@
 # Print the help for baseline                                                  #
 ################################################################################
 
-./baseline.rb --help
-Usage: ./baseline.rb [options] FILE...
+./baseline --help
+Usage: ./baseline [options] FILE...
 Runs the selected files, captures/compares the output
 Includes all executable files within given directories
     -b                               Update/create baselines
@@ -18,9 +18,9 @@ Status code: 0
 # Run baseline with an invalid argument                                        #
 ################################################################################
 
-./baseline.rb -m
+./baseline -m
 Error - invalid option: -m
-Usage: ./baseline.rb [options] FILE...
+Usage: ./baseline [options] FILE...
 Runs the selected files, captures/compares the output
 Includes all executable files within given directories
     -b                               Update/create baselines
@@ -35,7 +35,7 @@ Status code: 255
 # Run baseline with no arguments                                               #
 ################################################################################
 
-./baseline.rb
+./baseline
 No tests to run
 Status code: 0
 

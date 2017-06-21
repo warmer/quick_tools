@@ -2,7 +2,7 @@
 # Run with a directory                                                         #
 ################################################################################
 
-./baseline.rb no-tests/
+./baseline no-tests/
 no-tests/                                                     [ NOT EXECUTABLE ]
 Skipped: 1
 Status code: 0

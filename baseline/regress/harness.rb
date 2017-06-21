@@ -12,7 +12,7 @@ class Harness
   def self.run_test(&blk)
     Dir.mktmpdir do |dir|
       FileUtils.cp_r(File.join(PROJ_ROOT, 'regress/tests'), dir)
-      FileUtils.cp(File.join(PROJ_ROOT, 'baseline.rb'), dir)
+      FileUtils.cp(File.join(PROJ_ROOT, 'baseline'), dir)
       FileUtils.cd(dir) do
         harness = Harness.new(dir)
         harness.instance_exec(&blk)

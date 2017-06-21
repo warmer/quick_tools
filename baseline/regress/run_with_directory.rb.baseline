@@ -2,7 +2,7 @@
 # Run with a directory                                                         #
 ################################################################################
 
-./baseline.rb tests
+./baseline tests
 tests/no_baseline.rb                                                 [ MISSING ]
 tests/no_baseline_raises_error.rb                                    [ MISSING ]
 tests/baselined_out_of_date.rb                                        [ FAILED ]

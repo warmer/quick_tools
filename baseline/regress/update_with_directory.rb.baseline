@@ -2,7 +2,7 @@
 # Test before the update                                                       #
 ################################################################################
 
-./baseline.rb tests
+./baseline tests
 tests/no_baseline.rb                                                 [ MISSING ]
 tests/no_baseline_raises_error.rb                                    [ MISSING ]
 tests/baselined_out_of_date.rb                                        [ FAILED ]
@@ -28,7 +28,7 @@ Status code: 3
 # Update a directory                                                           #
 ################################################################################
 
-./baseline.rb -b tests
+./baseline -b tests
 tests/baselined_out_of_date.rb                                       [ UPDATED ]
 tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
 ======== STDERR ========
@@ -48,7 +48,7 @@ Status code: 3
 # Test after the first update                                                  #
 ################################################################################
 
-./baseline.rb tests
+./baseline tests
 tests/no_baseline_raises_error.rb                                    [ MISSING ]
 tests/baselined_out_of_date.rb                                        [ PASSED ]
 tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
@@ -70,7 +70,7 @@ Status code: 2
 # Re-run update                                                                #
 ################################################################################
 
-./baseline.rb -b tests
+./baseline -b tests
 tests/baselined_out_of_date.rb                                        [ PASSED ]
 tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
 ======== STDERR ========
@@ -90,7 +90,7 @@ Status code: 3
 # Test after the second update                                                 #
 ################################################################################
 
-./baseline.rb tests
+./baseline tests
 tests/no_baseline_raises_error.rb                                    [ MISSING ]
 tests/baselined_out_of_date.rb                                        [ PASSED ]
 tests/baselined_out_of_date_with_error.rb                             [ FAILED ]

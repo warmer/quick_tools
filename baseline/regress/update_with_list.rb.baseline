@@ -2,7 +2,7 @@
 # Update list of files/directories                                             #
 ################################################################################
 
-./baseline.rb -b tests/*
+./baseline -b tests/*
 tests/non_executable.rb                                       [ NOT EXECUTABLE ]
 tests/baselined_out_of_date.rb                                       [ UPDATED ]
 tests/baselined_out_of_date_with_error.rb                             [ FAILED ]

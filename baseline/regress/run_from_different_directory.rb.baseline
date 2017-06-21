@@ -3,7 +3,7 @@ Changing directories into "tests/"
 # Run baseline from a different dir against a dir                              #
 ################################################################################
 
-../baseline.rb .
+../baseline .
 ./no_baseline.rb                                                     [ MISSING ]
 ./no_baseline_raises_error.rb                                        [ MISSING ]
 ./baselined_out_of_date.rb                                            [ FAILED ]
@@ -29,7 +29,7 @@ Status code: 3
 # Run baseline from a different dir against individual files                   #
 ################################################################################
 
-../baseline.rb ./*.rb
+../baseline ./*.rb
 ./non_executable.rb                                           [ NOT EXECUTABLE ]
 ./no_baseline.rb                                                     [ MISSING ]
 ./no_baseline_raises_error.rb                                        [ MISSING ]
@@ -56,7 +56,7 @@ Status code: 3
 # Run baseline against a nested dir from a different dir                       #
 ################################################################################
 
-../baseline.rb nested
+../baseline nested
 nested/no_baseline.rb                                                [ MISSING ]
 nested/up_to_date.rb                                                  [ PASSED ]
 Passed: 1; Skipped: 1

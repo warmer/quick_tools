@@ -4,5 +4,5 @@ require_relative 'harness.rb'
 
 Harness.run_test do
   scenario 'Run with a full diff'
-  log_cmd './baseline.rb -f tests'
+  log_cmd './baseline -f tests'
 end

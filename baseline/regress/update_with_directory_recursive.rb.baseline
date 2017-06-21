@@ -2,7 +2,7 @@
 # Update list of files/directories, recursive                                  #
 ################################################################################
 
-./baseline.rb -b -r tests
+./baseline -b -r tests
 tests/baselined_out_of_date.rb                                       [ UPDATED ]
 tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
 ======== STDERR ========

@@ -2,7 +2,7 @@
 # Run with a directory, recursive                                              #
 ################################################################################
 
-./baseline.rb -r tests
+./baseline -r tests
 tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
 tests/nested/no_baseline.rb                                          [ MISSING ]
 tests/no_baseline.rb                                                 [ MISSING ]

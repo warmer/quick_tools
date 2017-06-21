@@ -2,7 +2,7 @@
 # Run silently (includes failures)                                             #
 ################################################################################
 
-./baseline.rb -s tests
+./baseline -s tests
 
 Status code: 3
 
@@ -10,7 +10,7 @@ Status code: 3
 # Run silently (single passing test)                                           #
 ################################################################################
 
-./baseline.rb -s tests/up_to_date.rb
+./baseline -s tests/up_to_date.rb
 
 Status code: 0
 
@@ -18,7 +18,7 @@ Status code: 0
 # Run silently (single failing test)                                           #
 ################################################################################
 
-./baseline.rb -s tests/baselined_out_of_date.rb
+./baseline -s tests/baselined_out_of_date.rb
 
 Status code: 1
 
@@ -26,7 +26,7 @@ Status code: 1
 # Run silently (no executable test)                                            #
 ################################################################################
 
-./baseline.rb -s tests/non_executable.rb
+./baseline -s tests/non_executable.rb
 
 Status code: 0
 
