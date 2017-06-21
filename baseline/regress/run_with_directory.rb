@@ -4,5 +4,5 @@ require_relative 'harness.rb'
 
 Harness.run_test do
   scenario 'Run with a directory'
-  log_cmd 'tests'
+  log_cmd './baseline.rb tests'
 end
