@@ -1,0 +1,31 @@
+################################################################################
+# Run with a list of files/directories, recursive                              #
+################################################################################
+
+./baseline -r tests/*
+tests/non_executable.rb                                       [ NOT EXECUTABLE ]
+tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
+tests/nested/no_baseline.rb                                          [ MISSING ]
+tests/no_baseline.rb                                                 [ MISSING ]
+tests/no_baseline_raises_error.rb                                    [ MISSING ]
+tests/baselined_out_of_date.rb                                        [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+======== STDERR ========
+tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+tests/baselined_raises_error.rb                                       [ FAILED ]
+======== STDERR ========
+tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+tests/nested/double-nested/up_to_date.rb                              [ PASSED ]
+tests/nested/up_to_date.rb                                            [ PASSED ]
+tests/up_to_date.rb                                                   [ PASSED ]
+Passed: 3; Failed: 3; Skipped: 5
+Status code: 3
+

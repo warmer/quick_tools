@@ -18,6 +18,9 @@ using N (default=4) random, common English words.
 [vms/](./vms/) - Useful scripts and notes for working with QEMU VMs,
 especially if you want to enable PCI passthrough.
 
+[baseline](./baseline/) - A well-tested and well-documented single-script,
+dependency-free baseline testing tool.
+
 # Configuration Files
 
 [.vimrc](./.vimrc) - An example `.vimrc` file used for personal development

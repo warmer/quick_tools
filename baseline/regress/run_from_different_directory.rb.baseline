@@ -1,0 +1,64 @@
+Changing directories into "tests/"
+################################################################################
+# Run baseline from a different dir against a dir                              #
+################################################################################
+
+../baseline .
+./no_baseline.rb                                                     [ MISSING ]
+./no_baseline_raises_error.rb                                        [ MISSING ]
+./baselined_out_of_date.rb                                            [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+./baselined_out_of_date_with_error.rb                                 [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+======== STDERR ========
+./baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+./baselined_raises_error.rb                                           [ FAILED ]
+======== STDERR ========
+./baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+./up_to_date.rb                                                       [ PASSED ]
+Passed: 1; Failed: 3; Skipped: 2
+Status code: 3
+
+################################################################################
+# Run baseline from a different dir against individual files                   #
+################################################################################
+
+../baseline ./*.rb
+./non_executable.rb                                           [ NOT EXECUTABLE ]
+./no_baseline.rb                                                     [ MISSING ]
+./no_baseline_raises_error.rb                                        [ MISSING ]
+./baselined_out_of_date.rb                                            [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+./baselined_out_of_date_with_error.rb                                 [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+======== STDERR ========
+./baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+./baselined_raises_error.rb                                           [ FAILED ]
+======== STDERR ========
+./baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+./up_to_date.rb                                                       [ PASSED ]
+Passed: 1; Failed: 3; Skipped: 3
+Status code: 3
+
+################################################################################
+# Run baseline against a nested dir from a different dir                       #
+################################################################################
+
+../baseline nested
+nested/no_baseline.rb                                                [ MISSING ]
+nested/up_to_date.rb                                                  [ PASSED ]
+Passed: 1; Skipped: 1
+Status code: 0
+

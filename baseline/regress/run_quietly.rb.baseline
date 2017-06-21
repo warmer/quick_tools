@@ -1,0 +1,41 @@
+################################################################################
+# Run quietly (includes failures)                                              #
+################################################################################
+
+./baseline -q tests
+tests/no_baseline.rb                                                 [ MISSING ]
+tests/no_baseline_raises_error.rb                                    [ MISSING ]
+tests/baselined_out_of_date.rb                                        [ FAILED ]
+tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
+tests/baselined_raises_error.rb                                       [ FAILED ]
+tests/up_to_date.rb                                                   [ PASSED ]
+Passed: 1; Failed: 3; Skipped: 2
+Status code: 3
+
+################################################################################
+# Run quietly (single passing test)                                            #
+################################################################################
+
+./baseline -q tests/up_to_date.rb
+tests/up_to_date.rb                                                   [ PASSED ]
+Passed: 1
+Status code: 0
+
+################################################################################
+# Run quietly (single failing test)                                            #
+################################################################################
+
+./baseline -q tests/baselined_out_of_date.rb
+tests/baselined_out_of_date.rb                                        [ FAILED ]
+Failed: 1
+Status code: 1
+
+################################################################################
+# Run quietly (no executable test)                                             #
+################################################################################
+
+./baseline -q tests/non_executable.rb
+tests/non_executable.rb                                       [ NOT EXECUTABLE ]
+Skipped: 1
+Status code: 0
+
