@@ -1,4 +1,30 @@
 ################################################################################
+# Test before the update                                                       #
+################################################################################
+
+./baseline.rb tests
+tests/no_baseline.rb                                                 [ MISSING ]
+tests/no_baseline_raises_error.rb                                    [ MISSING ]
+tests/baselined_out_of_date.rb                                        [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+======== STDERR ========
+tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+tests/baselined_raises_error.rb                                       [ FAILED ]
+======== STDERR ========
+tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+tests/up_to_date.rb                                                   [ PASSED ]
+Passed: 1; Failed: 3; Skipped: 2
+Status code: 3
+
+################################################################################
 # Update a directory                                                           #
 ################################################################################
 
@@ -17,4 +43,68 @@ tests/no_baseline_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
 tests/up_to_date.rb                                                   [ PASSED ]
 Passed: 1; Failed: 3; Updated: 2
 Status code: 3
+
+################################################################################
+# Test after the first update                                                  #
+################################################################################
+
+./baseline.rb tests
+tests/no_baseline_raises_error.rb                                    [ MISSING ]
+tests/baselined_out_of_date.rb                                        [ PASSED ]
+tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+======== STDERR ========
+tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+tests/baselined_raises_error.rb                                       [ FAILED ]
+======== STDERR ========
+tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+tests/no_baseline.rb                                                  [ PASSED ]
+tests/up_to_date.rb                                                   [ PASSED ]
+Passed: 3; Failed: 2; Skipped: 1
+Status code: 2
+
+################################################################################
+# Re-run update                                                                #
+################################################################################
+
+./baseline.rb -b tests
+tests/baselined_out_of_date.rb                                        [ PASSED ]
+tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
+======== STDERR ========
+tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+tests/baselined_raises_error.rb                                       [ FAILED ]
+======== STDERR ========
+tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+tests/no_baseline.rb                                                  [ PASSED ]
+tests/no_baseline_raises_error.rb                                     [ FAILED ]
+======== STDERR ========
+tests/no_baseline_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+tests/up_to_date.rb                                                   [ PASSED ]
+Passed: 3; Failed: 3
+Status code: 3
+
+################################################################################
+# Test after the second update                                                 #
+################################################################################
+
+./baseline.rb tests
+tests/no_baseline_raises_error.rb                                    [ MISSING ]
+tests/baselined_out_of_date.rb                                        [ PASSED ]
+tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+======== STDERR ========
+tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+tests/baselined_raises_error.rb                                       [ FAILED ]
+======== STDERR ========
+tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+tests/no_baseline.rb                                                  [ PASSED ]
+tests/up_to_date.rb                                                   [ PASSED ]
+Passed: 3; Failed: 2; Skipped: 1
+Status code: 2
 
