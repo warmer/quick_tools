@@ -77,24 +77,52 @@ module ReverseHttpProxy
       read_content
     end
 
+    # This sends the HTTP response line, which for an HTTP request,
+    # contains the verb, the request path, and the HTTP version like this:
+    #   GET /path HTTP/1.0
+    # ... and for an HTTP response, contains the HTTP version, the status
+    # code, and the message corresponding to the status code like this:
+    #   HTTP/1.1 404 NOT FOUND
+    # @param [String] line - the fully-formed response line
     def send_response(line)
       @socket.puts(line)
     end
 
+    # This sends all given HTTP headers, which are assumed to be already
+    # correctly formed and provided as an array of Strings. Note that the
+    # default implementation of this proxy assumes that there is a "blank"
+    # header at the end of the array that separates the headers from any
+    # body of the request, and for correct operation, that "blank" header
+    # must also be provided.
+    # NOTE:
+    #   - headers are already formed as "[HEADER-KEY]: [HEADER VALUE]"
+    #   - headers ends with an empty string
+    #
+    # @param [Array] headers - array of headers to be sent
     def send_headers(headers)
       headers.each {|header| @socket.puts header}
     end
 
+    # This sends any given content, raw
+    # NOTE: this will not do anything if content.length == 0
+    #
+    # @param [String] content - the body of the HTTP request
     def send_content(content)
       @socket.write(content) if content && content.length > 0
     end
 
+    # Closes the connection
     def close!
       @socket.close
     end
 
     private
 
+    # Parses the first line of any HTTP request or response, populating
+    # the relevant instance variables depending on whether this is configured
+    # to interpret as the client or the server
+    #
+    # @param [String] line - the request line
     def parse_request(line)
       @request = line
       if @is_server
@@ -104,6 +132,11 @@ module ReverseHttpProxy
       end
     end
 
+    # Parses and collects headers. The default implementation of this method
+    # looks for the content-length header and parses that value into the
+    # @send_bytes instance variable
+    #
+    # @param [String] line - raw header string
     def parse_header(line)
       @headers << line
       if line.downcase.start_with? 'content-length: '
@@ -111,6 +144,9 @@ module ReverseHttpProxy
       end
     end
 
+    # Reads content from the connection. This currently reads the entire
+    # content all at once, blocking until @send_bytes is received
+    # @return [String/nil] - request/response content received
     def read_content
       # read content if content is being sent
       @content = @socket.read(@send_bytes) if @send_bytes > 0
@@ -120,6 +156,8 @@ module ReverseHttpProxy
   # Handles management of incoming connections, over-all proxy configuration,
   # and high-level behavior of the proxy
   class Server
+    # Configures a reverse transparent proxy server, but does not start it
+    # An options hash is mandatory; see code for options
     def initialize(opts)
       raise 'Must provide an options hash' unless opts.is_a? Hash
 
@@ -131,6 +169,7 @@ module ReverseHttpProxy
       @cache_writeback = opts[:cache_writeback]
     end
 
+    # Starts the proxy and spawns a new thread for every incoming request
     def run!
       start_server!
       loop do
@@ -162,6 +201,11 @@ module ReverseHttpProxy
       end
     end
 
+    private
+
+    # Starts the listening TCPServer. Note that this is abstracted to allow
+    # for overriding default behavior, like adding support for accepting
+    # connections over SSL/TLS
     def start_server!
       puts "Listening on #{@listen_host}:#{@listen_port}"
       @proxy_server = TCPServer.new(@listen_host, @listen_port)
@@ -169,13 +213,14 @@ module ReverseHttpProxy
   end
 end
 
+# When this script is run directly, the proxy server is started with any
+# given default overrides.
+# For usage instructions, run this script with the '-?' flag
 if $PROGRAM_NAME == __FILE__
   options = {
     listen_port: 8080,
     listen_host: '127.0.0.1',
     remote_port: 80,
-    cache_writeback: false,
-    cache_dir: Dir.pwd,
   }
   args = ARGV.dup
   opt_parse = OptionParser.new do |opts|
@@ -185,6 +230,16 @@ if $PROGRAM_NAME == __FILE__
     end
     opts.on('-p', '--remote-port=PORT', Integer, 'Remote Port') do |port|
       options[:remote_port] = port
+    end
+    opts.on('--listen-host=HOST', String, 'Listen Host') do |host|
+      options[:listen_host] = host
+    end
+    opts.on('--listen-port=PORT', Integer, 'Proxy Port') do |port|
+      options[:listen_port] = port
+    end
+    opts.on_tail('-?', '--help', 'Display help') do
+      puts opt_parse
+      exit
     end
   end
   begin
