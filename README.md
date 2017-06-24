@@ -27,6 +27,35 @@ usage patterns, and library usage.
 [http_client.rb](./http_client.rb) - Minimal, portable, pure-Ruby HTTP client
 for core HTTP actions.
 
+Usage example:
+```ruby
+require 'http_client.rb'
+client = HttpClient.new('http://localhost:9292')
+
+# simple GET
+response = client.get('/')
+
+# simple POST
+headers = {'Content-Type' => 'application/x-www-form-urlencoded'}
+body = URI.encode_www_form('key' => 'value')
+response = client.post('/dest', headers, body)
+
+# simple PUT
+headers = {'Content-Type' => 'application/json'}
+body = '{"key":"value"}'
+response = client.put('/dest', headers, body)
+
+# simple DELETE
+response = client.delete('/dest')
+
+# All supported HTTP actions return a Net::HTTP object that has detailed
+# information about the response. Examples include:
+# response content: response.body
+# response HTTP code: response.code
+# response status message: response.message
+# response headers: response.each { |header_name, values| ... }
+```
+
 # Configuration Files
 
 [.vimrc](./.vimrc) - An example `.vimrc` file used for personal development
