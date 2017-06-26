@@ -56,6 +56,23 @@ response = client.delete('/dest')
 # response headers: response.each { |header_name, values| ... }
 ```
 
+# One/Few-line Utilities
+
+## HTTP Servers
+
+These serve files over HTTP from the current directory. In these examples,
+replace `8080` with the desired port to serve on a different port.
+
+Python:
+```
+python -m SimpleHTTPServer 8080
+```
+
+Ruby:
+```
+ruby -e "require 'webrick'; WEBrick::HTTPServer.new(DocumentRoot: '.', BindAddress: '127.0.0.1', Port: 8080).start"
+```
+
 # Configuration Files
 
 [.vimrc](./.vimrc) - An example `.vimrc` file used for personal development
