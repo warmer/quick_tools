@@ -50,22 +50,27 @@ module ReverseHttpProxy
   # understanding the incoming request
   class Client
     attr_reader :verb, :resource, :version, :request, :headers
-    attr_reader :send_bytes, :content
+    attr_reader :content_length, :content, :transfer_encodings
 
     # Initializer requires a socket that is already established
     def initialize(socket, opts = {})
       @socket = socket
       @verb = @resource = @version = @code = @message = @request = nil
-      @send_bytes = 0
+      @content = ''
+      @content_length = 0
       @headers = []
+      @transfer_encodings = []
       @is_server = opts[:is_server]
     end
 
     # Read from our socket and make sense of the incoming request
+    #
+    # @param [Hash] opts - overrides of default behavior
+    #   :host - if provided, overrides interpreted headers with provided host
+    #   :skip_content - if provided, does not read the request body
     def read_request!(opts = {})
-      port = opts[:port]
       host = opts[:host]
-      host = "#{host}:#{port}" if port && port != 80
+      skip_content = opts[:skip_content]
       # read lines from the socket
       while line = @socket.gets
         unless @request
@@ -76,7 +81,29 @@ module ReverseHttpProxy
         # end of the HTTP request
         break if line.strip == ''
       end
-      read_content
+      read_content unless skip_content
+    end
+
+    # Reads content from the connection. This currently reads the entire
+    # content all at once, blocking until @content_length is received
+    #
+    # @return [String/nil] - request/response content received
+    def read_content
+      # read content if content is being sent
+      @content = @socket.read(@content_length) if @content_length > 0
+    end
+
+    # Reads one chunk from a chunked transfer
+    def read_chunk
+      # the first line contains the length of the next chunk
+      length = @socket.gets
+      chunk = @socket.read(length.to_i(16))
+      # append to the local copy of the content
+      @content += chunk
+      # all content is followed by a newline
+      @socket.gets
+      # the length (as received, in hex) and the content chunk
+      [length, chunk]
     end
 
     # This sends the HTTP response line, which for an HTTP request,
@@ -138,7 +165,7 @@ module ReverseHttpProxy
 
     # Parses and collects headers. The default implementation of this method
     # looks for the content-length header and parses that value into the
-    # @send_bytes instance variable
+    # @content_length instance variable
     #
     # @param [String] line - raw header string
     # @param [String] host - optional override for Host and Referrer headers
@@ -151,19 +178,11 @@ module ReverseHttpProxy
       @headers << line
       line = line.downcase
       if line.start_with? 'content-length: '
-        @send_bytes = line.gsub(/^\S+\s+(\d+)\s*$/, '\1').to_i
+        @content_length = line.gsub(/^\S+\s+(\d+)\s*$/, '\1').to_i
       elsif line.start_with? 'transfer-encoding: '
         encodings = line.gsub(/^\S+\s+(.*)$/, '\1')
-        @transfer_encodings = encodings.split(/\s*,\s*/).map {|e| e.to_sym}
+        @transfer_encodings = encodings.split(/\s*,\s*/).map {|e| e.strip.to_sym}
       end
-    end
-
-    # Reads content from the connection. This currently reads the entire
-    # content all at once, blocking until @send_bytes is received
-    # @return [String/nil] - request/response content received
-    def read_content
-      # read content if content is being sent
-      @content = @socket.read(@send_bytes) if @send_bytes > 0
     end
   end
 
@@ -195,8 +214,7 @@ module ReverseHttpProxy
             puts e.message
             puts e.backtrace
           ensure
-            client.close! if client
-            server.close! if server
+            socket.close
           end
         end
       end
@@ -212,12 +230,18 @@ module ReverseHttpProxy
     def handle_request(socket)
       client = Client.new(socket)
       # This receives all headers and the entire request body, if there is one
-      client.read_request!(host: @remote_host, port: @remote_port)
+      client.read_request!(host: "#{@remote_host}:#{@remote_port}")
 
       # Process the request read from the client and respond
       send_response(client)
     end
 
+    # Determines how to respond to the request received by the given client
+    # Default implementation of this method is to establish a connection with
+    # the remote host, forward the entire request, read the entire response,
+    # then forward that response back to the client.
+    #
+    # @param [ReverseHttpProxy::Client] client - client initiating the request
     def send_response(client)
       server = Client.new(TCPSocket.new(@remote_host, @remote_port))
 
@@ -225,11 +249,39 @@ module ReverseHttpProxy
       server.send_headers(client.headers)
       server.send_content(client.content)
 
-      server.read_request!
+      # don't read back the content just yet
+      server.read_request! skip_content: true
       # send them back to the requester
       client.send_response(server.request)
       client.send_headers(server.headers)
-      client.send_content(server.content)
+
+      if server.content_length > 0
+        server.read_content
+        client.send_content(server.content)
+      elsif server.transfer_encodings.include? :chunked
+        exchange_chunked_transfer(client, server)
+      else
+        puts "All transfer encodings: #{server.transfer_encodings.inspect}"
+        raise 'Do not know how to handle this response!'
+      end
+    rescue => e
+      puts e.message
+      puts e.backtrace
+    ensure
+      server.close! if server
+    end
+
+    # Note that
+    def exchange_chunked_transfer(client, server)
+      loop do
+        length, chunk = server.read_chunk
+        puts "Chunk length: #{length}"
+        client.send_content length
+        client.send_content chunk
+        client.send_content "\r\n"
+        break if chunk.empty?
+      end
+      puts
     end
 
     # Starts the listening TCPServer. Note that this is abstracted to allow
