@@ -62,14 +62,16 @@ module ReverseHttpProxy
     end
 
     # Read from our socket and make sense of the incoming request
-    def read_request!
+    def read_request!(opts = {})
+      port = opts[:port]
+      host = opts[:host]
+      host = "#{host}:#{port}" if port && port != 80
       # read lines from the socket
       while line = @socket.gets
-        puts line
         unless @request
           parse_request(line)
         else
-          parse_header(line)
+          parse_header(line, host: host)
         end
         # end of the HTTP request
         break if line.strip == ''
@@ -85,6 +87,7 @@ module ReverseHttpProxy
     #   HTTP/1.1 404 NOT FOUND
     # @param [String] line - the fully-formed response line
     def send_response(line)
+      puts line
       @socket.puts(line)
     end
 
@@ -100,7 +103,7 @@ module ReverseHttpProxy
     #
     # @param [Array] headers - array of headers to be sent
     def send_headers(headers)
-      headers.each {|header| @socket.puts header}
+      headers.each {|header| puts header; @socket.puts header}
     end
 
     # This sends any given content, raw
@@ -113,7 +116,7 @@ module ReverseHttpProxy
 
     # Closes the connection
     def close!
-      @socket.close
+      @socket.close if @socket
     end
 
     private
@@ -125,10 +128,11 @@ module ReverseHttpProxy
     # @param [String] line - the request line
     def parse_request(line)
       @request = line
+      line = line.split(/\s+/, 3)
       if @is_server
-        @version, @code, @message = line.split(/\s+/, 3)
+        @version, @code, @message = line
       else
-        @verb, @resource, @version = line.split(/\s+/, 3)
+        @verb, @resource, @version = line
       end
     end
 
@@ -137,10 +141,20 @@ module ReverseHttpProxy
     # @send_bytes instance variable
     #
     # @param [String] line - raw header string
-    def parse_header(line)
+    # @param [String] host - optional override for Host and Referrer headers
+    def parse_header(line, opts = {})
+      host = opts[:host]
+      if host
+        line = line.gsub(/^(Host:\s+).*$/, "\\1#{host}")
+        line = line.gsub(/^(Referer:\s+https?:\/\/)[^\/]*(.*)$/, "\\1#{host}\\2")
+      end
       @headers << line
-      if line.downcase.start_with? 'content-length: '
-        @send_bytes = line.gsub(/^\S+\s+(\d+)\s+$/, '\1').to_i
+      line = line.downcase
+      if line.start_with? 'content-length: '
+        @send_bytes = line.gsub(/^\S+\s+(\d+)\s*$/, '\1').to_i
+      elsif line.start_with? 'transfer-encoding: '
+        encodings = line.gsub(/^\S+\s+(.*)$/, '\1')
+        @transfer_encodings = encodings.split(/\s*,\s*/).map {|e| e.to_sym}
       end
     end
 
@@ -156,6 +170,7 @@ module ReverseHttpProxy
   # Handles management of incoming connections, over-all proxy configuration,
   # and high-level behavior of the proxy
   class Server
+    attr_reader :listen_port, :listen_host, :remote_port, :remote_host
     # Configures a reverse transparent proxy server, but does not start it
     # An options hash is mandatory; see code for options
     def initialize(opts)
@@ -175,33 +190,47 @@ module ReverseHttpProxy
       loop do
         Thread.start(@proxy_server.accept) do |socket|
           begin
-            request = Client.new(socket)
-            request.read_request!
-
-            response = Client.new(TCPSocket.new(@remote_host, @remote_port))
-            response.send_response(request.request)
-            response.send_headers(request.headers)
-            response.send_content(request.content)
-
-            response.read_request!
-
-            # send them back to the requester
-            request.send_response(response.request)
-            request.send_headers(response.headers)
-            request.send_content(response.content)
-
-            # close the requester when the remote closes its connection
-            response.close!
-            request.close!
+            handle_request(socket)
           rescue => e
             puts e.message
             puts e.backtrace
+          ensure
+            client.close! if client
+            server.close! if server
           end
         end
       end
     end
 
     private
+
+    # This handles the entire exchange between client and (if needed server)
+    # Note that this is deliberately broken into pieces to allow behavior to
+    # be overridden in pieces, as needed, depending on the application
+    #
+    # @param [TCPSocket] socket - the incoming socket from a proxy client
+    def handle_request(socket)
+      client = Client.new(socket)
+      # This receives all headers and the entire request body, if there is one
+      client.read_request!(host: @remote_host, port: @remote_port)
+
+      # Process the request read from the client and respond
+      send_response(client)
+    end
+
+    def send_response(client)
+      server = Client.new(TCPSocket.new(@remote_host, @remote_port))
+
+      server.send_response(client.request)
+      server.send_headers(client.headers)
+      server.send_content(client.content)
+
+      server.read_request!
+      # send them back to the requester
+      client.send_response(server.request)
+      client.send_headers(server.headers)
+      client.send_content(server.content)
+    end
 
     # Starts the listening TCPServer. Note that this is abstracted to allow
     # for overriding default behavior, like adding support for accepting
