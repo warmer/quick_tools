@@ -49,8 +49,8 @@ module ReverseHttpProxy
   # Handles reading and writing to incoming connections, and parsing and
   # understanding the incoming request
   class Client
-    attr_reader :verb, :resource, :version, :request, :headers
-    attr_reader :content_length, :content, :transfer_encodings
+    attr_reader :verb, :resource, :version, :code, :message, :request
+    attr_reader :headers, :content_length, :content, :transfer_encodings
 
     # Initializer requires a socket that is already established
     def initialize(socket, opts = {})
@@ -243,7 +243,7 @@ module ReverseHttpProxy
     #
     # @param [ReverseHttpProxy::Client] client - client initiating the request
     def send_response(client)
-      server = Client.new(TCPSocket.new(@remote_host, @remote_port))
+      server = Client.new(TCPSocket.new(@remote_host, @remote_port), is_server: true)
 
       server.send_response(client.request)
       server.send_headers(client.headers)
@@ -260,6 +260,8 @@ module ReverseHttpProxy
         client.send_content(server.content)
       elsif server.transfer_encodings.include? :chunked
         exchange_chunked_transfer(client, server)
+      elsif server.code =~ /^3../
+        # redirects do not have any content to transfer
       else
         puts "All transfer encodings: #{server.transfer_encodings.inspect}"
         raise 'Do not know how to handle this response!'
