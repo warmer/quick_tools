@@ -22,6 +22,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+require 'time'
 require 'socket'
 require 'optparse'
 
@@ -199,8 +200,10 @@ module ReverseHttpProxy
       @listen_host = opts[:listen_host] || '127.0.0.1'
       @remote_host = opts[:remote_host]
       @remote_port = opts[:remote_port] || 80
-      @cache_dir = opts[:cache_dir] || Dir.pwd
-      @cache_writeback = opts[:cache_writeback]
+      # TODO: not yet supported
+      #@cache_writeback = opts[:write_cache]
+      @cache_dir = opts[:cache_dir]
+      @cache_dir = File.expand_path(@cache_dir, Dir.pwd) if @cache_dir
     end
 
     # Starts the proxy and spawns a new thread for every incoming request
@@ -236,6 +239,64 @@ module ReverseHttpProxy
       send_response(client)
     end
 
+    # Determines if a request from the given client is a cache hit
+    #
+    # @param [ReverseHttpProxy::Client] client - client with loaded request
+    # @return [String|false] the absolute path of a cache hit, or false
+    def cache_hit?(client)
+      return false unless @cache_dir
+      return false unless Dir.exist?(@cache_dir)
+      # sanity check the request
+      return false unless client.resource && !client.resource.empty?
+      # don't use URL params
+      resource = client.resource.split('?', 2)[0]
+      # join and expand the path
+      expanded_path = File.expand_path(File.join(@cache_dir, resource))
+      # don't allow requests to read outside the given cache directory
+      # (eg: resource = '../../../../tmp/foo.txt')
+      return false unless expanded_path.start_with?(@cache_dir)
+      # this covers permissions and the file actually existing on disk
+      return false unless File.readable?(expanded_path)
+      # return true if this is a regular file (eg: not a directory)
+      return expanded_path if File.file?(expanded_path)
+    end
+
+    def content_type_for(cache_path)
+      extension = File.extname(cache_path).gsub(/^\./, '').downcase
+      case extension
+      # add your content types here
+      when /^(htm|html)$/
+        'text/html'
+      when /^css$/
+        'text/css'
+      when /^js$/
+        'application/javascript'
+      when /^txt$/
+        'text/plain'
+      when /^(bmp|gif|png)$/
+        "image/#{$1}"
+      when /^(jpg|jpeg)$/
+        'image/jpeg'
+      else
+        nil
+      end
+    end
+
+    def headers_for(cache_path)
+      # TODO: read cached headers, too?
+      headers = [
+        "Date: #{Time.now.httpdate}",
+        "Server: ReverseHttpProxy",
+        "Last-Modified: #{File.mtime(cache_path).httpdate}",
+        "Content-Length: #{File.size(cache_path)}",
+      ]
+      content_type = content_type_for(cache_path)
+      headers << "Content-Type: #{content_type}" if content_type
+      # add an empty line to signify the end of the headers list
+      headers << ''
+      headers
+    end
+
     # Determines how to respond to the request received by the given client
     # Default implementation of this method is to establish a connection with
     # the remote host, forward the entire request, read the entire response,
@@ -243,6 +304,12 @@ module ReverseHttpProxy
     #
     # @param [ReverseHttpProxy::Client] client - client initiating the request
     def send_response(client)
+      if cache_path = cache_hit?(client)
+        client.send_response('HTTP/1.0 200 OK')
+        client.send_headers(headers_for(cache_path))
+        client.send_content(File.read(cache_path))
+        return
+      end
       server = Client.new(TCPSocket.new(@remote_host, @remote_port), is_server: true)
 
       server.send_response(client.request)
@@ -304,6 +371,7 @@ if $PROGRAM_NAME == __FILE__
     listen_port: 8080,
     listen_host: '127.0.0.1',
     remote_port: 80,
+    cache: false,
   }
   args = ARGV.dup
   opt_parse = OptionParser.new do |opts|
@@ -319,6 +387,15 @@ if $PROGRAM_NAME == __FILE__
     end
     opts.on('--listen-port=PORT', Integer, 'Proxy Port') do |port|
       options[:listen_port] = port
+    end
+    # TODO: not yet supported
+    #write_cache_help = 'Write remote host responses to cache (use with "-d")'
+    #opts.on('-w', '--write-cache', write_cache_help) do
+    #  options[:write_cache] = true
+    #end
+    cache_dir_help = 'Directory to use for local cache of requests'
+    opts.on('-d', '--cache-dir=PATH', String, cache_dir_help) do |path|
+      options[:cache_dir] = path
     end
     opts.on_tail('-?', '--help', 'Display help') do
       puts opt_parse
