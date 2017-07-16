@@ -214,7 +214,7 @@ end
 
 # Parses options off of the command line, then calls Baseline.run_tests when
 # this script is run directly
-if __FILE__ == $PROGRAM_NAME
+if $PROGRAM_NAME == __FILE__
   opts = ARGV.dup
   switches = opts.select { |x| x.start_with? '-' }
   files = opts.reject { |x| x.start_with? '-' }
