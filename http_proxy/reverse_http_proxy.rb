@@ -24,6 +24,7 @@
 
 require 'time'
 require 'socket'
+require 'logger'
 require 'optparse'
 
 # ReverseHttpProxy provides a lightweight, reverse HTTP proxy. This proxy can
@@ -58,10 +59,11 @@ module ReverseHttpProxy
       @socket = socket
       @verb = @resource = @version = @code = @message = @request = nil
       @content = ''
-      @content_length = 0
+      @content_length = nil
       @headers = []
       @transfer_encodings = []
       @is_server = opts[:is_server]
+      @logger = opts[:logger]
     end
 
     # Read from our socket and make sense of the incoming request
@@ -91,7 +93,9 @@ module ReverseHttpProxy
     # @return [String/nil] - request/response content received
     def read_content
       # read content if content is being sent
-      @content = @socket.read(@content_length) if @content_length > 0
+      if @content_length && @content_length > 0
+        @content = @socket.read(@content_length)
+      end
     end
 
     # Reads one chunk from a chunked transfer
@@ -115,7 +119,7 @@ module ReverseHttpProxy
     #   HTTP/1.1 404 NOT FOUND
     # @param [String] line - the fully-formed response line
     def send_response(line)
-      puts line
+      @logger.info(self.class) { line }
       @socket.puts(line)
     end
 
@@ -131,7 +135,10 @@ module ReverseHttpProxy
     #
     # @param [Array] headers - array of headers to be sent
     def send_headers(headers)
-      headers.each {|header| puts header; @socket.puts header}
+      headers.each do |header|
+        @logger.debug(self.class) { header }
+        @socket.puts header
+      end
     end
 
     # This sends any given content, raw
@@ -200,10 +207,15 @@ module ReverseHttpProxy
       @listen_host = opts[:listen_host] || '127.0.0.1'
       @remote_host = opts[:remote_host]
       @remote_port = opts[:remote_port] || 80
+      @logger = opts[:logger]
       # TODO: not yet supported
       #@cache_writeback = opts[:write_cache]
       @cache_dir = opts[:cache_dir]
       @cache_dir = File.expand_path(@cache_dir, Dir.pwd) if @cache_dir
+      unless @logger
+        @logger = Logger.new(STDOUT)
+        @logger.level = Logger::WARN
+      end
     end
 
     # Starts the proxy and spawns a new thread for every incoming request
@@ -214,8 +226,8 @@ module ReverseHttpProxy
           begin
             handle_request(socket)
           rescue => e
-            puts e.message
-            puts e.backtrace
+            @logger.error(self.class) { e.message }
+            @logger.error(self.class) { e.backtrace }
           ensure
             socket.close
           end
@@ -231,7 +243,7 @@ module ReverseHttpProxy
     #
     # @param [TCPSocket] socket - the incoming socket from a proxy client
     def handle_request(socket)
-      client = Client.new(socket)
+      client = Client.new(socket, logger: @logger)
       # This receives all headers and the entire request body, if there is one
       client.read_request!(host: "#{@remote_host}:#{@remote_port}")
 
@@ -310,7 +322,10 @@ module ReverseHttpProxy
         client.send_content(File.read(cache_path))
         return
       end
-      server = Client.new(TCPSocket.new(@remote_host, @remote_port), is_server: true)
+      server = Client.new(
+        TCPSocket.new(@remote_host, @remote_port),
+        logger: @logger,
+        is_server: true)
 
       server.send_response(client.request)
       server.send_headers(client.headers)
@@ -325,17 +340,19 @@ module ReverseHttpProxy
       if server.content_length > 0
         server.read_content
         client.send_content(server.content)
+      elsif server.content_length
+        # content length of 0, nothing to read or send back
       elsif server.transfer_encodings.include? :chunked
         exchange_chunked_transfer(client, server)
       elsif server.code =~ /^3../
         # redirects do not have any content to transfer
       else
-        puts "All transfer encodings: #{server.transfer_encodings.inspect}"
+        @logger.info(self.class) { "All transfer encodings: #{server.transfer_encodings.inspect}" }
         raise 'Do not know how to handle this response!'
       end
     rescue => e
-      puts e.message
-      puts e.backtrace
+      @logger.error(self.class) { e.message }
+      @logger.error(self.class) { e.backtrace }
     ensure
       server.close! if server
     end
@@ -344,7 +361,7 @@ module ReverseHttpProxy
     def exchange_chunked_transfer(client, server)
       loop do
         length, chunk = server.read_chunk
-        puts "Chunk length: #{length}"
+        @logger.debug(self.class) { "Chunk length: #{length}" }
         client.send_content length
         client.send_content chunk
         client.send_content "\r\n"
@@ -357,7 +374,7 @@ module ReverseHttpProxy
     # for overriding default behavior, like adding support for accepting
     # connections over SSL/TLS
     def start_server!
-      puts "Listening on #{@listen_host}:#{@listen_port}"
+      @logger.info(self.class) { "Listening on #{@listen_host}:#{@listen_port}" }
       @proxy_server = TCPServer.new(@listen_host, @listen_port)
     end
   end
