@@ -21,6 +21,14 @@ writeback.
 Because this is a reverse proxy, not a forward proxy, only HTTP requests
 made directly to the proxy are affected by proxy behavior.
 
+## Dependencies
+
+`reverse_http_proxy.rb` requires Ruby 1.9 or greater and requires no gems.
+
+A [baseline](../baseline/) test tool is needed to run the tests in
+[regress](./regress/), but this script is otherwise self-contained in a
+single file to maximize portability and utility.
+
 ## Usage
 
 Run the proxy directly from the command line:
