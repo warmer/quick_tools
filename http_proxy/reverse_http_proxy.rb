@@ -347,7 +347,7 @@ module ReverseHttpProxy
       elsif server.code =~ /^3../
         # redirects do not have any content to transfer
       else
-        @logger.info(self.class) { "All transfer encodings: #{server.transfer_encodings.inspect}" }
+        @logger.info(self.class) { "Encodings: #{server.transfer_encodings.inspect}" }
         raise 'Do not know how to handle this response!'
       end
     rescue => e
@@ -367,7 +367,6 @@ module ReverseHttpProxy
         client.send_content "\r\n"
         break if chunk.empty?
       end
-      puts
     end
 
     # Starts the listening TCPServer. Note that this is abstracted to allow
@@ -388,7 +387,7 @@ if $PROGRAM_NAME == __FILE__
     listen_port: 8080,
     listen_host: '127.0.0.1',
     remote_port: 80,
-    cache: false,
+    write_cache: false,
   }
   args = ARGV.dup
   opt_parse = OptionParser.new do |opts|

@@ -4,6 +4,14 @@ require 'logger'
 require 'webrick'
 require 'net/http'
 
+module WEBrick
+  class HTTPResponse
+    def create_error_page
+      @body = '***WEBrick Error Page***'
+    end
+  end
+end
+
 class Harness
   PROJ_ROOT ||= File.dirname(File.dirname(File.expand_path(__FILE__)))
 
@@ -12,10 +20,11 @@ class Harness
     @remote_port = opts[:remote_port] || 9880
     @remote_host = opts[:remote_host] || 'localhost'
     @serve_dir = opts[:serve_dir] || File.join(@dir, 'serve')
-    @listen_port = opts[:listen_port] || 9881
-    @listen_host = opts[:listen_host] || 'localhost'
+    @proxy_port = opts[:proxy_port] || 9881
+    @proxy_host = opts[:proxy_host] || 'localhost'
     @cache_dir = opts[:cache_dir] || File.join(@dir, 'cache')
-    @cache = false
+    @use_cache = opts[:use_cache]
+    @write_cache = false
     @remote_log = StringIO.new
     @proxy_log = StringIO.new
   end
@@ -59,10 +68,10 @@ class Harness
     options = {
       remote_port: @remote_port,
       remote_host: @remote_host,
-      listen_port: @listen_port,
-      listen_host: @listen_host,
-      cache_dir: @cache_dir,
-      cache: @cache,
+      listen_port: @proxy_port,
+      listen_host: @proxy_host,
+      cache_dir: @use_cache ? @cache_dir : nil,
+      write_cache: @write_cache,
       logger: proxy_logger,
     }
     @proxy = ReverseHttpProxy::Server.new(options)
@@ -77,22 +86,33 @@ class Harness
     @proxy_thread.kill if @proxy_thread
   end
 
+  def sanitize(line)
+    line
+      .gsub(/:#{@remote_port}/, ':[REMOTE_PORT]')
+      .gsub(/:#{@proxy_port}/, ':[PROXY_PORT]')
+  end
+
+  def log(line = '')
+    puts sanitize(line)
+  end
+
   def log_response(response)
     info_line = "=== #{response.uri} #{response.code} #{response.msg} ==="
-    puts info_line
-    puts "#{response.body}"
-    puts '=' * info_line.length
+    info_line = sanitize(info_line).ljust(80, '=')
+    log info_line
+    log "#{response.body}"
+    log '=' * info_line.length
   end
 
   def scenario(name)
-    puts '#' * 80
-    puts "# #{name}#{' ' * (76 - name.length)} #"
-    puts '#' * 80
-    puts
+    log '#' * 80
+    log "# #{name}#{' ' * (76 - name.length)} #"
+    log '#' * 80
+    log
   end
 
   def proxy_get(path, headers = {})
-    dest = "#{@listen_host}:#{@listen_port}"
+    dest = "#{@proxy_host}:#{@proxy_port}"
     request(Net::HTTP::Get, dest, path, headers)
   end
 
@@ -104,10 +124,23 @@ class Harness
   def request(type, dest, path, headers, body = nil)
     uri = URI.parse("http://#{dest}#{path}")
     http = Net::HTTP.new(uri.host, uri.port)
-    puts "Getting from URI: #{uri}"
     request = type.new(uri)
     headers.keys.each { |k| request[k] = headers[k] }
     request.body = body if body
     http.request(request)
+  end
+
+  # Returns a list of files that currently exist in the serve dir
+  def serve_files
+    Dir.glob(File.join(@serve_dir, '*'))
+      .map{|f| f.gsub(/#{@serve_dir}\/?/, '')}
+      .sort
+  end
+
+  # Returns a list of files that currently exist in the cache dir
+  def cache_files
+    Dir.glob(File.join(@cache_dir, '*'))
+      .map{|f| f.gsub(/#{@cache_dir}\/?/, '')}
+      .sort
   end
 end
