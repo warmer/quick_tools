@@ -1,0 +1,381 @@
+################################################################################
+# Request files that exist in "cache" through both endpoints                   #
+################################################################################
+
+=== http://localhost:[REMOTE_PORT]/cache_matches.txt 200 OK  ===================
+Cached - matches
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_matches.txt 200 OK =====================
+Cached - matches
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cache_not_matches.txt 200 OK  ===============
+Cached - origin (server) content
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_not_matches.txt 200 OK =================
+Cached - proxy (cache) content
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cache_only.txt 404 Not Found  ===============
+***WEBrick Error Page***
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_only.txt 200 OK ========================
+Cache only (not on server)
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cached_no_content.txt 200 OK  ===============
+
+================================================================================
+=== http://localhost:[PROXY_PORT]/cached_no_content.txt 200 OK =================
+
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/only_cached_no_content.txt 404 Not Found  ===
+***WEBrick Error Page***
+================================================================================
+=== http://localhost:[PROXY_PORT]/only_cached_no_content.txt 200 OK ============
+
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_matches.txt 200 OK  ===========
+➰
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_matches.txt 200 OK =============
+➰
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_not_matches.txt 200 OK  =======
+✗
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_not_matches.txt 200 OK =========
+✓
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_only.txt 404 Not Found  =======
+***WEBrick Error Page***
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_only.txt 200 OK ================
+✐
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+################################################################################
+# Request files that exist in "serve" through both endpoints                   #
+################################################################################
+
+=== http://localhost:[REMOTE_PORT]/cache_matches.txt 200 OK  ===================
+Cached - matches
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_matches.txt 200 OK =====================
+Cached - matches
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cache_not_matches.txt 200 OK  ===============
+Cached - origin (server) content
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_not_matches.txt 200 OK =================
+Cached - proxy (cache) content
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cached_no_content.txt 200 OK  ===============
+
+================================================================================
+=== http://localhost:[PROXY_PORT]/cached_no_content.txt 200 OK =================
+
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/uncached.txt 200 OK  ========================
+Uncached
+================================================================================
+=== http://localhost:[PROXY_PORT]/uncached.txt 200 OK  =========================
+Uncached
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/uncached_no_content.txt 200 OK  =============
+
+================================================================================
+=== http://localhost:[PROXY_PORT]/uncached_no_content.txt 200 OK  ==============
+
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_matches.txt 200 OK  ===========
+➰
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_matches.txt 200 OK =============
+➰
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_not_matches.txt 200 OK  =======
+✗
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_not_matches.txt 200 OK =========
+✓
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_uncached.txt 200 OK  ================
+✌
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_uncached.txt 200 OK  =================
+✌
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+################################################################################
+# Request files that exist in "cache" through both endpoints                   #
+################################################################################
+
+=== http://localhost:[REMOTE_PORT]/cache_matches.txt 200 OK  ===================
+Cached - matches
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_matches.txt 200 OK =====================
+Cached - matches
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cache_not_matches.txt 200 OK  ===============
+Cached - origin (server) content
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_not_matches.txt 200 OK =================
+Cached - proxy (cache) content
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cache_only.txt 404 Not Found  ===============
+***WEBrick Error Page***
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_only.txt 200 OK ========================
+Cache only (not on server)
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cached_no_content.txt 200 OK  ===============
+
+================================================================================
+=== http://localhost:[PROXY_PORT]/cached_no_content.txt 200 OK =================
+
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/only_cached_no_content.txt 404 Not Found  ===
+***WEBrick Error Page***
+================================================================================
+=== http://localhost:[PROXY_PORT]/only_cached_no_content.txt 200 OK ============
+
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/uncached.txt 200 OK  ========================
+Uncached
+================================================================================
+=== http://localhost:[PROXY_PORT]/uncached.txt 200 OK ==========================
+Uncached
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/uncached_no_content.txt 200 OK  =============
+
+================================================================================
+=== http://localhost:[PROXY_PORT]/uncached_no_content.txt 200 OK ===============
+
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_matches.txt 200 OK  ===========
+➰
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_matches.txt 200 OK =============
+➰
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_not_matches.txt 200 OK  =======
+✗
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_not_matches.txt 200 OK =========
+✓
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_only.txt 404 Not Found  =======
+***WEBrick Error Page***
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_only.txt 200 OK ================
+✐
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_uncached.txt 200 OK  ================
+✌
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_uncached.txt 200 OK ==================
+✌
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+################################################################################
+# Request files that exist in "serve" through both endpoints                   #
+################################################################################
+
+=== http://localhost:[REMOTE_PORT]/cache_matches.txt 200 OK  ===================
+Cached - matches
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_matches.txt 200 OK =====================
+Cached - matches
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cache_not_matches.txt 200 OK  ===============
+Cached - origin (server) content
+================================================================================
+=== http://localhost:[PROXY_PORT]/cache_not_matches.txt 200 OK =================
+Cached - proxy (cache) content
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/cached_no_content.txt 200 OK  ===============
+
+================================================================================
+=== http://localhost:[PROXY_PORT]/cached_no_content.txt 200 OK =================
+
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/uncached.txt 200 OK  ========================
+Uncached
+================================================================================
+=== http://localhost:[PROXY_PORT]/uncached.txt 200 OK ==========================
+Uncached
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/uncached_no_content.txt 200 OK  =============
+
+================================================================================
+=== http://localhost:[PROXY_PORT]/uncached_no_content.txt 200 OK ===============
+
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_matches.txt 200 OK  ===========
+➰
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_matches.txt 200 OK =============
+➰
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_not_matches.txt 200 OK  =======
+✗
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_not_matches.txt 200 OK =========
+✓
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_uncached.txt 200 OK  ================
+✌
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_uncached.txt 200 OK ==================
+✌
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Remote access log:
+GET /cache_matches.txt 200 17 localhost:[REMOTE_PORT]
+GET /cache_not_matches.txt 200 33 localhost:[REMOTE_PORT]
+GET /cache_only.txt 404 24 localhost:[REMOTE_PORT]
+GET /cached_no_content.txt 200 0 localhost:[REMOTE_PORT]
+GET /only_cached_no_content.txt 404 24 localhost:[REMOTE_PORT]
+GET /unicode_cache_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_not_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_only.txt 404 24 localhost:[REMOTE_PORT]
+GET /cache_matches.txt 200 17 localhost:[REMOTE_PORT]
+GET /cache_not_matches.txt 200 33 localhost:[REMOTE_PORT]
+GET /cached_no_content.txt 200 0 localhost:[REMOTE_PORT]
+GET /uncached.txt 200 9 localhost:[REMOTE_PORT]
+GET /uncached.txt 200 9 localhost:[REMOTE_PORT]
+GET /uncached_no_content.txt 200 0 localhost:[REMOTE_PORT]
+GET /uncached_no_content.txt 200 0 localhost:[REMOTE_PORT]
+GET /unicode_cache_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_not_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_uncached.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_uncached.txt 200 3 localhost:[REMOTE_PORT]
+GET /cache_matches.txt 200 17 localhost:[REMOTE_PORT]
+GET /cache_not_matches.txt 200 33 localhost:[REMOTE_PORT]
+GET /cache_only.txt 404 24 localhost:[REMOTE_PORT]
+GET /cached_no_content.txt 200 0 localhost:[REMOTE_PORT]
+GET /only_cached_no_content.txt 404 24 localhost:[REMOTE_PORT]
+GET /uncached.txt 200 9 localhost:[REMOTE_PORT]
+GET /uncached_no_content.txt 200 0 localhost:[REMOTE_PORT]
+GET /unicode_cache_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_not_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_only.txt 404 24 localhost:[REMOTE_PORT]
+GET /unicode_uncached.txt 200 3 localhost:[REMOTE_PORT]
+GET /cache_matches.txt 200 17 localhost:[REMOTE_PORT]
+GET /cache_not_matches.txt 200 33 localhost:[REMOTE_PORT]
+GET /cached_no_content.txt 200 0 localhost:[REMOTE_PORT]
+GET /uncached.txt 200 9 localhost:[REMOTE_PORT]
+GET /uncached_no_content.txt 200 0 localhost:[REMOTE_PORT]
+GET /unicode_cache_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_not_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_uncached.txt 200 3 localhost:[REMOTE_PORT]
+
+Proxy log:
+INFO   ReverseHttpProxy::Server Listening on localhost:[PROXY_PORT]
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_only.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /only_cached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_only.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Client GET /uncached.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
+INFO   ReverseHttpProxy::Server Caching 9 B for /uncached.txt
+INFO   ReverseHttpProxy::Client GET /uncached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
+INFO   ReverseHttpProxy::Server Caching 0 B for /uncached_no_content.txt
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Client GET /unicode_uncached.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
+INFO   ReverseHttpProxy::Server Caching 3 B for /unicode_uncached.txt
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_only.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /only_cached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /uncached.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /uncached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_only.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_uncached.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /cached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /uncached.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /uncached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+INFO   ReverseHttpProxy::Server Cache hit for GET /unicode_uncached.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.0 200 OK
+

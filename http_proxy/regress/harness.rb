@@ -24,7 +24,7 @@ class Harness
     @proxy_host = opts[:proxy_host] || 'localhost'
     @cache_dir = opts[:cache_dir] || File.join(@dir, 'cache')
     @use_cache = opts[:use_cache]
-    @write_cache = false
+    @write_cache = opts[:write_cache]
     @remote_log = StringIO.new
     @proxy_log = StringIO.new
   end

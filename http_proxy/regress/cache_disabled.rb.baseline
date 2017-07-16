@@ -37,6 +37,27 @@ Uncached
 
 ================================================================================
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_matches.txt 200 OK  ===========
+➰
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_matches.txt 200 OK  ============
+➰
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_not_matches.txt 200 OK  =======
+✗
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_not_matches.txt 200 OK  ========
+✗
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_uncached.txt 200 OK  ================
+✌
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_uncached.txt 200 OK  =================
+✌
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ################################################################################
 # Request files that exist in "cache" through both endpoints                   #
@@ -77,6 +98,27 @@ Cached - origin (server) content
 ***WEBrick Error Page***
 ================================================================================
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_matches.txt 200 OK  ===========
+➰
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_matches.txt 200 OK  ============
+➰
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_not_matches.txt 200 OK  =======
+✗
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_not_matches.txt 200 OK  ========
+✗
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=== http://localhost:[REMOTE_PORT]/unicode_cache_only.txt 404 Not Found  =======
+***WEBrick Error Page***
+================================================================================
+=== http://localhost:[PROXY_PORT]/unicode_cache_only.txt 404 Not Found  ========
+***WEBrick Error Page***
+================================================================================
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Remote access log:
 GET /cache_matches.txt 200 17 localhost:[REMOTE_PORT]
@@ -89,6 +131,12 @@ GET /uncached.txt 200 9 localhost:[REMOTE_PORT]
 GET /uncached.txt 200 9 localhost:[REMOTE_PORT]
 GET /uncached_no_content.txt 200 0 localhost:[REMOTE_PORT]
 GET /uncached_no_content.txt 200 0 localhost:[REMOTE_PORT]
+GET /unicode_cache_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_not_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_not_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_uncached.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_uncached.txt 200 3 localhost:[REMOTE_PORT]
 GET /cache_matches.txt 200 17 localhost:[REMOTE_PORT]
 GET /cache_matches.txt 200 17 localhost:[REMOTE_PORT]
 GET /cache_not_matches.txt 200 33 localhost:[REMOTE_PORT]
@@ -99,6 +147,12 @@ GET /cached_no_content.txt 200 0 localhost:[REMOTE_PORT]
 GET /cached_no_content.txt 200 0 localhost:[REMOTE_PORT]
 GET /only_cached_no_content.txt 404 24 localhost:[REMOTE_PORT]
 GET /only_cached_no_content.txt 404 24 localhost:[REMOTE_PORT]
+GET /unicode_cache_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_not_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_not_matches.txt 200 3 localhost:[REMOTE_PORT]
+GET /unicode_cache_only.txt 404 24 localhost:[REMOTE_PORT]
+GET /unicode_cache_only.txt 404 24 localhost:[REMOTE_PORT]
 
 Proxy log:
 INFO   ReverseHttpProxy::Server Listening on localhost:[PROXY_PORT]
@@ -112,6 +166,12 @@ INFO   ReverseHttpProxy::Client GET /uncached.txt HTTP/1.1
 INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
 INFO   ReverseHttpProxy::Client GET /uncached_no_content.txt HTTP/1.1
 INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
+INFO   ReverseHttpProxy::Client GET /unicode_cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
+INFO   ReverseHttpProxy::Client GET /unicode_cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
+INFO   ReverseHttpProxy::Client GET /unicode_uncached.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
 INFO   ReverseHttpProxy::Client GET /cache_matches.txt HTTP/1.1
 INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
 INFO   ReverseHttpProxy::Client GET /cache_not_matches.txt HTTP/1.1
@@ -121,5 +181,11 @@ INFO   ReverseHttpProxy::Client HTTP/1.1 404 Not Found
 INFO   ReverseHttpProxy::Client GET /cached_no_content.txt HTTP/1.1
 INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
 INFO   ReverseHttpProxy::Client GET /only_cached_no_content.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.1 404 Not Found
+INFO   ReverseHttpProxy::Client GET /unicode_cache_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
+INFO   ReverseHttpProxy::Client GET /unicode_cache_not_matches.txt HTTP/1.1
+INFO   ReverseHttpProxy::Client HTTP/1.1 200 OK
+INFO   ReverseHttpProxy::Client GET /unicode_cache_only.txt HTTP/1.1
 INFO   ReverseHttpProxy::Client HTTP/1.1 404 Not Found
 

@@ -26,6 +26,7 @@ require 'time'
 require 'socket'
 require 'logger'
 require 'optparse'
+require 'fileutils'
 
 # ReverseHttpProxy provides a lightweight, reverse HTTP proxy. This proxy can
 # be configured to have different behavior depending on the path of the
@@ -208,8 +209,7 @@ module ReverseHttpProxy
       @remote_host = opts[:remote_host]
       @remote_port = opts[:remote_port] || 80
       @logger = opts[:logger]
-      # TODO: not yet supported
-      #@cache_writeback = opts[:write_cache]
+      @cache_writeback = opts[:write_cache]
       @cache_dir = opts[:cache_dir]
       @cache_dir = File.expand_path(@cache_dir, Dir.pwd) if @cache_dir
       unless @logger
@@ -251,26 +251,49 @@ module ReverseHttpProxy
       send_response(client)
     end
 
-    # Determines if a request from the given client is a cache hit
+    # Determines the cache path that would be used for the given request
     #
-    # @param [ReverseHttpProxy::Client] client - client with loaded request
-    # @return [String|false] the absolute path of a cache hit, or false
-    def cache_hit?(client)
+    # @param [String] resource - the raw resource in a request
+    # @return [String|false] the absolute path of a cache path, or false if
+    #   the request cannot be cached
+    def cache_path_for(resource)
       return false unless @cache_dir
       return false unless Dir.exist?(@cache_dir)
-      # sanity check the request
-      return false unless client.resource && !client.resource.empty?
+      # sanity check the resource
+      return false unless resource && !resource.empty?
       # don't use URL params
-      resource = client.resource.split('?', 2)[0]
+      resource = resource.split('?', 2)[0]
       # join and expand the path
       expanded_path = File.expand_path(File.join(@cache_dir, resource))
       # don't allow requests to read outside the given cache directory
       # (eg: resource = '../../../../tmp/foo.txt')
       return false unless expanded_path.start_with?(@cache_dir)
+      expanded_path
+    end
+
+    # Determines if a request from the given client is a cache hit
+    #
+    # @param [ReverseHttpProxy::Client] client - client with loaded request
+    # @return [String|false] the absolute path of a cache hit, or false
+    def cache_hit?(client)
+      expanded_path = cache_path_for(client.resource)
+      return false unless expanded_path
       # this covers permissions and the file actually existing on disk
       return false unless File.readable?(expanded_path)
       # return true if this is a regular file (eg: not a directory)
       return expanded_path if File.file?(expanded_path)
+    end
+
+    # Writes the given resource to the local, on-disk cache
+    #
+    # @param [String] resource - the requested resource to cache
+    # @param [String] content - the content to cache, if possible
+    def write_cache(resource, content)
+      expanded_path = cache_path_for(resource)
+      return false unless expanded_path
+      FileUtils.mkdir_p(File.dirname(expanded_path))
+      @logger.info(self.class) { "Caching #{content.length} B for #{resource}" }
+      File.write(expanded_path, content)
     end
 
     def content_type_for(cache_path)
@@ -317,6 +340,7 @@ module ReverseHttpProxy
     # @param [ReverseHttpProxy::Client] client - client initiating the request
     def send_response(client)
       if cache_path = cache_hit?(client)
+        @logger.info(self.class) { "Cache hit for #{client.request}" }
         client.send_response('HTTP/1.0 200 OK')
         client.send_headers(headers_for(cache_path))
         client.send_content(File.read(cache_path))
@@ -337,7 +361,7 @@ module ReverseHttpProxy
       client.send_response(server.request)
       client.send_headers(server.headers)
 
-      if server.content_length > 0
+      if server.content_length && server.content_length > 0
         server.read_content
         client.send_content(server.content)
       elsif server.content_length
@@ -350,6 +374,7 @@ module ReverseHttpProxy
         @logger.info(self.class) { "Encodings: #{server.transfer_encodings.inspect}" }
         raise 'Do not know how to handle this response!'
       end
+      write_cache(client.resource, server.content) if @cache_writeback
     rescue => e
       @logger.error(self.class) { e.message }
       @logger.error(self.class) { e.backtrace }
@@ -404,11 +429,10 @@ if $PROGRAM_NAME == __FILE__
     opts.on('--listen-port=PORT', Integer, 'Proxy Port') do |port|
       options[:listen_port] = port
     end
-    # TODO: not yet supported
-    #write_cache_help = 'Write remote host responses to cache (use with "-d")'
-    #opts.on('-w', '--write-cache', write_cache_help) do
-    #  options[:write_cache] = true
-    #end
+    write_cache_help = 'Write remote host responses to cache (use with "-d")'
+    opts.on('-w', '--write-cache', write_cache_help) do
+      options[:write_cache] = true
+    end
     cache_dir_help = 'Directory to use for local cache of requests'
     opts.on('-d', '--cache-dir=PATH', String, cache_dir_help) do |path|
       options[:cache_dir] = path
