@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Minimal Websocket Demo</title>
+</head>
+<body>
+  <script>
+    var socket = new WebSocket("ws://localhost:4568");
+    socket.onopen = function(event) { socket.send("Hello?") };
+    socket.onmessage = function(event) { console.log(event.data) }
+  </script>
+</body>
+</html>
