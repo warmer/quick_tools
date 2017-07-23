@@ -133,6 +133,7 @@ class WebSocketClient
 
   def text_frame(payload, fin)
     @logger.info "Received: #{payload.inspect}"
+    send_frame(1, 'Hello!')
   end
 
   def binary_frame(payload, fin)
@@ -143,12 +144,12 @@ class WebSocketClient
 
   # May include application data; must response with a pong frame unless
   # we are closing the connection
-  def ping_rame(payload)
+  def ping_frame(payload)
   end
 
   # Send in response to a ping frame initiated on this end OR as an attempt
   # on the client side to keep the connection alive unilaterally
-  def pong_rame(payload)
+  def pong_frame(payload)
   end
 
   # sends a WebSocket frame to the client with the given opcode
