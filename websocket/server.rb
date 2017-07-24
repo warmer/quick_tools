@@ -38,9 +38,9 @@ class WebSocketClient
     loop do
       # BASE FRAMING PROTOCOL (from https://tools.ietf.org/html/rfc6455)
       # | ---------------------- 32-bit word -------------------------- |
-      #
-      #                  1 1 1 1 1 1     2 2 2 2 1 1 1 1 3 3 2 2 2 2 2 2
-      #  7 6 5 4 3 2 1 0 5 4 3 2 1 0 9 8 3 2 1 0 9 8 7 6 1 0 9 8 7 6 5 4
+      # |                                                               |
+      # |               |1 1 1 1 1 1    |2 2 2 2 1 1 1 1|3 3 2 2 2 2 2 2|
+      # |7 6 5 4 3 2 1 0|5 4 3 2 1 0 9 8|3 2 1 0 9 8 7 6|1 0 9 8 7 6 5 4|
       # +-+-+-+-+-------+-+-------------+-------------------------------+
       # |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
       # |I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |
@@ -63,10 +63,51 @@ class WebSocketClient
       header, len = @socket.recv(2).unpack('C*')
       # a connection may be closed by the client and recv will still return
       return unless header && len
-      fin = (header & (1 << 7)) > 0
+      # FIN is set when this is either a control message or the last frame
+      # in a fragmented message
+      last_frame = (header & (1 << 7)) > 0
       # NOTE not validated: bits [4-6] of the header should always be unset
       opcode = (header & 0xf)
       is_masked = (len & (1 << 7)) > 0
+
+      # Handle message fragmentation
+      # See notes on Fragmentation in the RFC:
+      # https://tools.ietf.org/html/rfc6455#section-5.4
+
+      continuation = opcode.zero?
+      control_frame = opcode >= 8
+      fragment_in_progress = !@previous_opcode.nil?
+
+      # Handle fragmentation error states
+
+      # control frames must not be fragmented
+      if control_frame && !last_frame
+        @logger.error "Control frame (#{opcode}) cannot be fragmented"
+        socket.close
+        return
+
+      # fragments must not be interleaved (since we don't support extensions)
+      # with non-control frames
+      elsif fragment_in_progress && !continuation && !control_frame
+        @logger.error "Received invalid opcode (#{opcode}) during fragmented transfer"
+        socket.close
+        return
+
+      # cannot receive continuation messages unless there's already a
+      # fragmented message in progress
+      elsif continuation && !fragment_in_progress
+        @logger.error 'Received invalid continuation frame'
+        socket.close
+        return
+
+      end
+
+      unless control_frame
+        # Use the previous opcode if there is a fragment in progress
+        opcode = @previous_opcode || opcode
+        # reset the opcode if this is the last frame
+        @previous_opcode = last_frame ? nil : opcode
+      end
 
       # special cases with the payload size:
       # if 126, next 2 bytes are the real size
@@ -81,38 +122,40 @@ class WebSocketClient
         # append the integers for the full length
         payload_size = size_words[0] << 32 + size_words[1]
       end
-      mask = is_masked ? @socket.recv(4).unpack('C*') : nil
       @logger.info "Payload size: #{payload_size} B"
-      payload = ''
+
+      # If the 'MASK' bit was set, then 4 bytes are provided to the server
+      # to be used as an XOR mask for incoming bytes
+      # These bytes do *not* count against the payload size
+      mask = is_masked ? @socket.recv(4).unpack('C*') : nil
+
+      # Receive the entire payload
+      # NOTE that this would need to be done differently to handle large
+      # payload transfers since we read the entire payload before moving on,
+      # making us vulnerable to clients sending large payloads
+      payload = StringIO.new
+      payload.set_encoding('BINARY')
       while payload_size > 0
+        # read the payload in chunks
         to_read = [1024, payload_size].min
         payload_size -= to_read
 
         data = @socket.recv(to_read).unpack('C*')
         data = data.each_with_index.map {|b, idx| b ^ mask[idx & 3] } if mask
-        payload += data.pack('C*')
-      end
-
-      # are there going to be more messages after this one?
-      if fin
-        # no - use the previous opcode, or the current if there is no previous
-        opcode = @previous_opcode || opcode
-        # end of fragmentation - clear the previous opcode
-        @previous_opcode = nil
-      else
-        # make sure to set the previous opcode if it's not already set
-        @previous_opcode ||= opcode
-        # ensure we use the previous opcode
-        opcode = @previous_opcode
+        payload.write data.pack('C*')
       end
 
       case opcode
       when 0
-        continuation_frame(payload, fin)
+        # opcode should be overridden by the original opcode for a fragmented
+        # message when a continuation frame is sent
+        @logger.error 'Recieved ambiguous contination frame'
+        socket.close
+        return
       when 1
-        text_frame(payload, fin)
+        text_frame(payload, last_frame)
       when 2
-        binary_frame(payload, fin)
+        binary_frame(payload, last_frame)
       # control frames are >= 8 (bit 3 is set)
       when 8
         connection_close_frame(payload)
@@ -128,15 +171,12 @@ class WebSocketClient
     end
   end
 
-  def continuation_frame(payload, fin)
-  end
-
-  def text_frame(payload, fin)
-    @logger.info "Received: #{payload.inspect}"
+  def text_frame(payload, last_frame)
+    @logger.info "Received: #{payload.string.inspect}"
     send_frame(1, 'Hello!')
   end
 
-  def binary_frame(payload, fin)
+  def binary_frame(payload, last_frame)
   end
 
   def connection_close_frame(payload)
@@ -154,9 +194,9 @@ class WebSocketClient
 
   # sends a WebSocket frame to the client with the given opcode
   # determines all other field
-  def send_frame(opcode, payload = '', fin = true)
+  def send_frame(opcode, payload = '', last_frame = true)
     payload = payload.force_encoding('BINARY')
-    header = (fin ? 0x80 : 0) | opcode
+    header = (last_frame ? 0x80 : 0) | opcode
     @socket.send(header.chr, 0)
 
     if payload.length < 126
@@ -226,6 +266,7 @@ class WebSocketServer
     end
   end
 
+  # Stops the main WebSocket server thread
   def stop!
     @server_thread.kill if @server_thread
   end
@@ -236,7 +277,7 @@ class WebSocketServer
   # request, and then serving content if the request appears to be valid
   # TODO: server should respond to bad requests with "400 Bad Request"
   #
-  # @param [TCPSocket] socket - the incoming socket from a proxy client
+  # @param [TCPSocket] socket - the incoming socket from a WebSocket client
   def handle_request(socket)
     request = ''
     http_request = path = host = origin = nil
@@ -288,6 +329,9 @@ class WebSocketServer
       return
     end
 
+    # Optional header
+    # See notes about "Origin Considerations" in the RFC:
+    # https://tools.ietf.org/html/rfc6455#section-10.2
     if request =~ /^Origin: (\S+)\s*$/i
       origin = $1
     end
@@ -323,8 +367,10 @@ class WebSocketServer
 end
 
 
-# When this script is run directly, the proxy server is started with any
-# given default overrides.
+# When this script is run directly, two servers are started with default args:
+# - an HTTP server for serving static content
+# - a WebSockets server for handling WebSocket requests
+#
 # For usage instructions, run this script with the '-?' flag
 if $PROGRAM_NAME == __FILE__
   require 'optparse'
@@ -368,23 +414,24 @@ if $PROGRAM_NAME == __FILE__
     :Host => options[:host],
     :Port => options[:web_port],
     :DocumentRoot => './',
-    #:Logger => Logger.new(StringIO.new),
     :Logger => Logger.new(STDOUT),
   }
   http_server = WEBrick::HTTPServer.new http_opts
 
-  proxy_logger = Logger.new(STDOUT)
-  proxy_logger.level = Logger::DEBUG
+  ws_logger = Logger.new(STDOUT)
+  ws_logger.level = Logger::DEBUG
   sock_opts = {
     host: options[:host],
     port: options[:socket_port],
-    logger: proxy_logger,
+    logger: ws_logger,
   }
   websocket_server = WebSocketServer.new sock_opts
 
   [:INT, :TERM].each do |sig|
     trap(sig) { http_server.stop; websocket_server.stop! }
   end
+  # non-blocking
   websocket_server.run!
+  # blocking
   http_server.start
 end
