@@ -22,10 +22,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# WebSocketClient is initialized with an established WebSocket connection.
+# It does not matter who initiated the connection, as once the connection is
+# established it is symetric (either end can send any supported type of
+# message at any time).
+#
+# Notes:
+# - The client supports no extensions (set with Sec-WebSocket-Extensions).
+#   Chrome uses this extension: https://tools.ietf.org/html/rfc7692
 class WebSocketClient
+  require 'logger'
+
+  # Initializer for an established websocket connection
+  #
+  # Options include:
+  #   :logger - Logger to use for logging (defaults to STDOUT)
+  # @params [TCPSocket] socket
   def initialize(socket, opts = {})
     @socket = socket
-    @logger = opts[:logger]
+    @logger = opts[:logger] || Logger.new(STDOUT)
 
     # sent to indicate that the connection is closing
     # the only time this should be true is when the server initiates
@@ -34,6 +49,8 @@ class WebSocketClient
     @previous_opcode = nil
   end
 
+  # Called to handle incoming WebSocket frames from a client. Will not return
+  # until the socket is closed.
   def serve
     loop do
       # BASE FRAMING PROTOCOL (from https://tools.ietf.org/html/rfc6455)
@@ -192,24 +209,41 @@ class WebSocketClient
   def pong_frame(payload)
   end
 
-  # sends a WebSocket frame to the client with the given opcode
-  # determines all other field
-  def send_frame(opcode, payload = '', last_frame = true)
+  # sends a WebSocket frame to the client with the given opcode and
+  # determines all other field values.
+  # @param [Integer] opcode - the opcode to send
+  # @param [String] payload
+  # @param [Boolean] first_frame - False when this is a continuation message,
+  #   so the opcode should be 0
+  # @param [Boolean] last_frame - True when the 'FIN' bit should be set,
+  #   indicating there are no additional payloads for this message
+  def send_frame(opcode, payload = '', first_frame = true, last_frame = true)
     payload = payload.force_encoding('BINARY')
-    header = (last_frame ? 0x80 : 0) | opcode
-    @socket.send(header.chr, 0)
+    # "continuation" frame
+    header = opcode
+    # continuation messages don't include opcodes
+    header = 0 unless first_frame
+    # Control frames (>= 8) and the last frame cannot be a continuation
+    # set the FIN bit
+    header |= 0x80 if (opcode >= 8 || last_frame)
+
+    ws_header = StringIO.new
+    ws_header.set_encoding('BINARY')
+
+    ws_header.write(header.chr)
 
     if payload.length < 126
-      @socket.send(payload.length.chr, 0)
+      ws_header.write(payload.length.chr)
     elsif payload.length < (2**16)
-      @socket.send(126.chr, 0)
-      @socket.send([payload.length].pack('n'), 0)
+      ws_header.write(126.chr)
+      ws_header.write([payload.length].pack('n'))
     else
-      @socket.send(127.chr, 0)
+      ws_header.write(127.chr)
       len = [(payload.length >> 32), (payload.length & 0xffffffff)].pack('N')
-      @socket.send(len, 0)
+      ws_header.write(len)
     end
 
+    @socket.send(ws_header.string, 0)
     @socket.send(payload, 0)
   end
 end
@@ -236,6 +270,9 @@ class WebSocketServer
   # @params [Hash] opts - options hash supporting:
   #   host: hostname from which to serve WebSockets
   #   port: port from which to serve WebSockets
+  #   logger: logger override to use for log messages (defaults to STDOUT)
+  #   client_handler: class to use for handling WebSocket client functionality
+  #     instead of WebSocketClient once a WebSocket connection is established
   def initialize(opts = {})
     @host = opts[:host]
     @port = opts[:port]
@@ -294,47 +331,59 @@ class WebSocketServer
     if http_request =~ /^GET (\S+) HTTP\/1\.1\s*$/
       path = $1
     else
-      @logger.warn 'Received unsupported request type'
+      respond_400 socket, 'Received unsupported request type'
       return
     end
 
     # requred headers
 
     unless request =~ /^Connection: Upgrade\s*$/i
-      @logger.warn 'Received request without "Connection: Upgrade" header'
+      respond_400 socket, 'Received request without "Connection: Upgrade" header'
       return
     end
 
     unless request =~ /^Upgrade: websocket\s*$/i
-      @logger.warn 'Received request without "Upgrade: websocket" header'
-      return
-    end
-
-    unless request =~ /^Sec-WebSocket-Version: 13\s*$/i
-      @logger.warn 'Recieved websocket request with invalid version header'
+      respond_400 socket, 'Received request without "Upgrade: websocket" header'
       return
     end
 
     if request =~ /^Host: (\S+)\s*$/i
       host = $1
     else
-      @logger.warn 'Did not receive valid "Host" header'
+      respond_400 socket, 'Did not receive valid "Host" header'
       return
     end
 
-    if request =~ /^Sec-WebSocket-Key: (\S+)\s*$/i
-      websocket_key = $1
-    else
-      @logger.warn 'Received invalid websocket request (missing key)'
+    websocket_key = websocket_version = nil
+    other_headers = []
+    # inspect the WebSocket headers
+    request.scan(/^(Sec-WebSocket-[^: ]+: [^\r]*)\r?$/i).flatten.each do |head|
+      case head
+      when /^Sec-WebSocket-Version: 13$/i
+        websocket_version = 13
+      when /^Sec-WebSocket-Key: (\S+)$/i
+        websocket_key = $1
+      else
+        other_headers << head
+      end
+    end
+
+    unless websocket_version
+      respond_400 socket, 'Did not receive websocket version header value of 13'
       return
     end
+
+    unless websocket_key
+      respond_400 socket, 'Received invalid websocket request (missing key)'
+      return
+    end
+
+    @logger.info "Additional WebSocket headers: #{other_headers.join('#')}"
 
     # Optional header
     # See notes about "Origin Considerations" in the RFC:
     # https://tools.ietf.org/html/rfc6455#section-10.2
-    if request =~ /^Origin: (\S+)\s*$/i
-      origin = $1
-    end
+    origin = $1 if request =~ /^Origin: (\S+)\s*$/i
 
     @logger.info 'Received websocket key, establishing connection'
     response_to_hash = "#{websocket_key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
@@ -355,6 +404,22 @@ class WebSocketServer
     )
     # serves indefinitely
     client.serve
+  end
+
+  def respond_400(socket, message)
+    @logger.warn message
+    message = message.force_encoding('BINARY')
+    response = <<-HEADER
+      HTTP/1.1 400 Bad Request
+      Content-Type: text/html
+      Content-Length: #{message.length}
+      Connection: close
+
+    HEADER
+    response = response.split("\n", -1).map {|l| l.strip}
+    response = response.join("\r\n")
+    socket.write response
+    socket.write message
   end
 
   # Starts the listening TCPServer. Note that this is abstracted to allow
