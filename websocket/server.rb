@@ -32,15 +32,113 @@
 #   Chrome uses this extension: https://tools.ietf.org/html/rfc7692
 class WebSocketClient
   require 'logger'
+  require 'socket'
+  require 'securerandom'
+
+  # Connect, as a client, to the given host:port and path
+  # This will complete negotiation of an outgoing WebSocket connection,
+  # including the generation and validation of the WebSocket Key/Accept
+  # headers.
+  #
+  # @param [String] host - destination websocket server host
+  # @param [String] port - port for the destination websocket server
+  # @param [Hash] opts - optional behavior overrides:
+  #   :logger - the Ruby Logger object (or compatible) for client logging
+  #   :origin - the Origin to specify in the headers when connecting
+  #   :headers - any additional non-required headers
+  # @return [WebSocketClient] when connection successfully established
+  def self.connect(host, port, opts = {})
+    logger = opts[:logger]
+    origin = opts[:origin]
+    path = opts[:path] || '/'
+    headers = opts[:headers] || []
+    user_agent = opts[:user_agent] || 'WebSocketClient'
+
+    # establish the TCPSocket connection
+    socket = TCPSocket.new(host, port.to_i)
+
+    # generate the initial request to the TCP socket
+    host_header = host
+    host_header += ":#{port.to_s}" unless port.to_s == '80'
+    # for the server to hash with a constant and send back in the response
+    websocket_key = SecureRandom.base64(16)
+    request = [
+      # base HTTP request
+      "GET #{path} HTTP/1.1",
+
+      # required for WebSocket
+      "Host: #{host_header}",
+      'Connection: Upgrade',
+      'Upgrade: websocket',
+      # as of the time this was written, the only officially-supported version
+      'Sec-WebSocket-Version: 13',
+      "Sec-WebSocket-Key: #{websocket_key}",
+
+      # required to successfully use with proxies
+      'Pragma: no-cache',
+      'Cache-Control: no-cache',
+
+      # some remote servers won't handle requests without user agents
+      "User-Agent: #{user_agent}",
+    ]
+    # Origin is sent by all browsers, but not necessarily for non-browsers
+    # If asked, this will send the origin
+    request << "Origin: #{origin}" unless origin.nil? || origin.empty?
+    # an "empty header" delimits HTTP headers from the body of the request
+    request << ''
+
+    begin
+      # send the request
+      socket.write(request.join("\r\n"))
+
+      response_line = acceptance = connection = upgrade = nil
+      # read the response
+      while(!(line = socket.readline.strip).empty?)
+        if response_line
+          case line
+          when /^connection: (.*)$/i
+            connection = $1
+          when /^upgrade: (.*)$/i
+            upgrade = $1
+          when /^sec-websocket-accept: (.*)$/i
+            acceptance = $1
+          else
+            # don't care
+          end
+        else
+          response_line = line
+          proto, code, msg = response_line.split(' ')
+          raise "Unsupported protocol: #{proto.inspect}" unless proto == 'HTTP/1.1'
+          raise "Invalid response code: #{code.inspect}" unless code == '101'
+          raise "Invalid HTTP message: #{msg.inspect}" if msg.nil? || msg.empty?
+        end
+      end
+      raise 'WebSocket Upgrade header not "websocket"' unless upgrade == 'websocket'
+      raise 'WebSocket Connection header not "Upgrade"' unless connection == 'Upgrade'
+      # validate the acceptance haeder
+      response_to_hash = "#{websocket_key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+      websocket_accept = Digest::SHA1.base64digest(response_to_hash)
+      raise 'Invalid WebSocket acceptance' unless acceptance == websocket_accept
+    ensure
+      socket.close unless socket.closed?
+    end
+
+    self.new(socket,
+      path: path, host: host, origin: origin, client: true,
+      logger: logger,
+    )
+  end
 
   # Initializer for an established websocket connection
   #
   # Options include:
-  #   :logger - Logger to use for logging (defaults to STDOUT)
+  #   :logger [Logger] to use for logging (defaults to STDOUT)
+  #   :client [Boolean] true when acting as the client, not the server
   # @params [TCPSocket] socket
   def initialize(socket, opts = {})
     @socket = socket
     @logger = opts[:logger] || Logger.new(STDOUT)
+    @is_client = opts[:is_client]
 
     # sent to indicate that the connection is closing
     # the only time this should be true is when the server initiates
@@ -86,6 +184,22 @@ class WebSocketClient
       # NOTE not validated: bits [4-6] of the header should always be unset
       opcode = (header & 0xf)
       is_masked = (len & (1 << 7)) > 0
+
+      # A client MUST mask all frames that it sends to the server, and the
+      # server MUST close the connection upon receiving an unmasked frame
+      unless @is_client || is_masked
+        @logger.error 'Detected unmasked frame as server: closing connection'
+        socket.close
+        return
+      end
+
+      # A server MUST NOT mask ANY frames that it sends to the client, and
+      # the client MUST close a connection if it detects a masked frame
+      if @is_client && is_masked
+        @logger.error 'Detected masked frame as client: closing connection'
+        socket.close
+        return
+      end
 
       # Handle message fragmentation
       # See notes on Fragmentation in the RFC:
@@ -231,16 +345,29 @@ class WebSocketClient
     ws_header.set_encoding('BINARY')
 
     ws_header.write(header.chr)
+    # the MASK bit must be set for all client frames
+    payload_len = @is_client ? 0x80 : 0
 
     if payload.length < 126
-      ws_header.write(payload.length.chr)
+      ws_header.write((payload_len | payload.length).chr)
     elsif payload.length < (2**16)
-      ws_header.write(126.chr)
+      ws_header.write((126 | payload_len).chr)
       ws_header.write([payload.length].pack('n'))
     else
-      ws_header.write(127.chr)
+      ws_header.write((127 | payload_len).chr)
       len = [(payload.length >> 32), (payload.length & 0xffffffff)].pack('N')
       ws_header.write(len)
+    end
+
+    # there must be a random 4-byte mask when sending as the client
+    if @is_client
+      mask_string = SecureRandom.random_bytes(4)
+      ws_header.write(mask_string)
+
+      # XOR each byte in the payload with the mask before sending
+      mask = mask_string.unpack('C*')
+      masked_data = payload.unpack('C*').each_with_index.map {|b, idx| b ^ mask[idx & 3] }
+      payload = masked_data.pack('C*')
     end
 
     @socket.send(ws_header.string, 0)
@@ -265,6 +392,7 @@ end
 class WebSocketServer
   require 'socket'
   require 'logger'
+  require 'digest'
 
   # Configures the WebSocketServer, but does not start the server
   # @params [Hash] opts - options hash supporting:
@@ -430,7 +558,6 @@ class WebSocketServer
     @server = TCPServer.new(@host, @port)
   end
 end
-
 
 # When this script is run directly, two servers are started with default args:
 # - an HTTP server for serving static content
