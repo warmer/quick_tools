@@ -23,111 +23,18 @@
 # SOFTWARE.
 
 # WebSocketClient is initialized with an established WebSocket connection.
-# It does not matter who initiated the connection, as once the connection is
-# established it is symetric (either end can send any supported type of
-# message at any time).
+# There are slight differences in behavior depending on who initiated the
+# connection, but otherwise, once the connection is established it is
+# symetric (either end can send any supported type of message at any time).
 #
 # Notes:
 # - The client supports no extensions (set with Sec-WebSocket-Extensions).
 #   Chrome uses this extension: https://tools.ietf.org/html/rfc7692
+#   (but this will handle connections to Chrome just fine without extensions)
 class WebSocketClient
   require 'logger'
   require 'socket'
   require 'securerandom'
-
-  # Connect, as a client, to the given host:port and path
-  # This will complete negotiation of an outgoing WebSocket connection,
-  # including the generation and validation of the WebSocket Key/Accept
-  # headers.
-  #
-  # @param [String] host - destination websocket server host
-  # @param [String] port - port for the destination websocket server
-  # @param [Hash] opts - optional behavior overrides:
-  #   :logger - the Ruby Logger object (or compatible) for client logging
-  #   :origin - the Origin to specify in the headers when connecting
-  #   :headers - any additional non-required headers
-  # @return [WebSocketClient] when connection successfully established
-  def self.connect(host, port, opts = {})
-    logger = opts[:logger]
-    origin = opts[:origin]
-    path = opts[:path] || '/'
-    headers = opts[:headers] || []
-    user_agent = opts[:user_agent] || 'WebSocketClient'
-
-    # establish the TCPSocket connection
-    socket = TCPSocket.new(host, port.to_i)
-
-    # generate the initial request to the TCP socket
-    host_header = host
-    host_header += ":#{port.to_s}" unless port.to_s == '80'
-    # for the server to hash with a constant and send back in the response
-    websocket_key = SecureRandom.base64(16)
-    request = [
-      # base HTTP request
-      "GET #{path} HTTP/1.1",
-
-      # required for WebSocket
-      "Host: #{host_header}",
-      'Connection: Upgrade',
-      'Upgrade: websocket',
-      # as of the time this was written, the only officially-supported version
-      'Sec-WebSocket-Version: 13',
-      "Sec-WebSocket-Key: #{websocket_key}",
-
-      # required to successfully use with proxies
-      'Pragma: no-cache',
-      'Cache-Control: no-cache',
-
-      # some remote servers won't handle requests without user agents
-      "User-Agent: #{user_agent}",
-    ]
-    # Origin is sent by all browsers, but not necessarily for non-browsers
-    # If asked, this will send the origin
-    request << "Origin: #{origin}" unless origin.nil? || origin.empty?
-    # an "empty header" delimits HTTP headers from the body of the request
-    request << ''
-
-    begin
-      # send the request
-      socket.write(request.join("\r\n"))
-
-      response_line = acceptance = connection = upgrade = nil
-      # read the response
-      while(!(line = socket.readline.strip).empty?)
-        if response_line
-          case line
-          when /^connection: (.*)$/i
-            connection = $1
-          when /^upgrade: (.*)$/i
-            upgrade = $1
-          when /^sec-websocket-accept: (.*)$/i
-            acceptance = $1
-          else
-            # don't care
-          end
-        else
-          response_line = line
-          proto, code, msg = response_line.split(' ')
-          raise "Unsupported protocol: #{proto.inspect}" unless proto == 'HTTP/1.1'
-          raise "Invalid response code: #{code.inspect}" unless code == '101'
-          raise "Invalid HTTP message: #{msg.inspect}" if msg.nil? || msg.empty?
-        end
-      end
-      raise 'WebSocket Upgrade header not "websocket"' unless upgrade == 'websocket'
-      raise 'WebSocket Connection header not "Upgrade"' unless connection == 'Upgrade'
-      # validate the acceptance haeder
-      response_to_hash = "#{websocket_key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-      websocket_accept = Digest::SHA1.base64digest(response_to_hash)
-      raise 'Invalid WebSocket acceptance' unless acceptance == websocket_accept
-    ensure
-      socket.close unless socket.closed?
-    end
-
-    self.new(socket,
-      path: path, host: host, origin: origin, client: true,
-      logger: logger,
-    )
-  end
 
   # Initializer for an established websocket connection
   #
@@ -139,12 +46,19 @@ class WebSocketClient
     @socket = socket
     @logger = opts[:logger] || Logger.new(STDOUT)
     @is_client = opts[:is_client]
+    @handlers = opts[:handlers] || Hash.new {|h, v| h[v] = []}
 
     # sent to indicate that the connection is closing
     # the only time this should be true is when the server initiates
     # a connection_close_frame and is waiting for the client response
     @closing = false
     @previous_opcode = nil
+  end
+
+  # Executes the given block when the specified action occurs
+  def on(action, func = nil, &block)
+    func ||= block
+    @handlers[action] << func
   end
 
   # Called to handle incoming WebSocket frames from a client. Will not return
@@ -284,16 +198,17 @@ class WebSocketClient
         socket.close
         return
       when 1
-        text_frame(payload, last_frame)
+        emit(:text, payload, last_frame)
       when 2
-        binary_frame(payload, last_frame)
+        emit(:binary, payload, last_frame)
       # control frames are >= 8 (bit 3 is set)
       when 8
-        connection_close_frame(payload)
+        emit(:control_close, payload, last_frame)
+        # TODO: per spec, need to actually close
       when 9
-        ping_frame(payload)
+        emit(:ping, payload)
       when 10
-        pong_frame(payload)
+        emit(:pong, payload)
       else
         @logger.error("Unsupported opcode: #{opcode}")
         socket.close
@@ -302,25 +217,11 @@ class WebSocketClient
     end
   end
 
-  def text_frame(payload, last_frame)
-    @logger.info "Received: #{payload.string.inspect}"
-    send_frame(1, 'Hello!')
-  end
-
-  def binary_frame(payload, last_frame)
-  end
-
-  def connection_close_frame(payload)
-  end
-
-  # May include application data; must response with a pong frame unless
-  # we are closing the connection
-  def ping_frame(payload)
-  end
-
-  # Send in response to a ping frame initiated on this end OR as an attempt
-  # on the client side to keep the connection alive unilaterally
-  def pong_frame(payload)
+  def emit(type, *args)
+    args.unshift(self)
+    @handlers[type].dup.each do |handler|
+      handler.call(*args)
+    end
   end
 
   # sends a WebSocket frame to the client with the given opcode and
@@ -373,6 +274,106 @@ class WebSocketClient
     @socket.send(ws_header.string, 0)
     @socket.send(payload, 0)
   end
+
+  # Connect, as a client, to the given host:port and path
+  # This will complete negotiation of an outgoing WebSocket connection,
+  # including the generation and validation of the WebSocket Key/Accept
+  # headers.
+  #
+  # @param [String] host - destination websocket server host
+  # @param [String] port - port for the destination websocket server
+  # @param [Hash] opts - optional behavior overrides:
+  #   :logger - the Ruby Logger object (or compatible) for client logging
+  #   :origin - the Origin to specify in the headers when connecting
+  #   :headers - any additional non-required headers
+  # @return [WebSocketClient] when connection successfully established
+  def self.connect(host, port, opts = {})
+    logger = opts[:logger]
+    origin = opts[:origin]
+    path = opts[:path] || '/'
+    headers = opts[:headers] || []
+    user_agent = opts[:user_agent] || 'WebSocketClient'
+
+    # establish the TCPSocket connection
+    socket = TCPSocket.new(host, port.to_i)
+
+    # generate the initial request to the TCP socket
+    host_header = host
+    host_header += ":#{port.to_s}" unless port.to_s == '80'
+    # for the server to hash with a constant and send back in the response
+    websocket_key = SecureRandom.base64(16)
+    request = [
+      # base HTTP request
+      "GET #{path} HTTP/1.1",
+
+      # required for WebSocket
+      "Host: #{host_header}",
+      'Connection: Upgrade',
+      'Upgrade: websocket',
+      # as of the time this was written, the only officially-supported version
+      'Sec-WebSocket-Version: 13',
+      "Sec-WebSocket-Key: #{websocket_key}",
+
+      # required to successfully use with proxies
+      'Pragma: no-cache',
+      'Cache-Control: no-cache',
+
+      # some remote servers won't handle requests without user agents
+      "User-Agent: #{user_agent}",
+    ]
+    # Origin is sent by all browsers, but not necessarily for non-browsers
+    # If asked, this will send the origin
+    request << "Origin: #{origin}" unless origin.nil? || origin.empty?
+    # an "empty header" delimits HTTP headers from the body of the request
+    request << ''
+    request << ''
+
+    begin
+      request = request.join("\r\n")
+      # send the request
+      socket.write request
+
+      response_line = acceptance = connection = upgrade = nil
+      # read the response
+      while(!(line = socket.readline.strip).empty?)
+        if response_line
+          case line
+          when /^connection: (.*)$/i
+            connection = $1
+          when /^upgrade: (.*)$/i
+            upgrade = $1
+          when /^sec-websocket-accept: (.*)$/i
+            acceptance = $1
+          else
+            # don't care
+          end
+        else
+          response_line = line
+          proto, code, msg = response_line.split(' ')
+          raise "Unsupported protocol: #{proto.inspect}" unless proto == 'HTTP/1.1'
+          raise "Invalid response code: #{code.inspect}" unless code == '101'
+          raise "Invalid HTTP message: #{msg.inspect}" if msg.nil? || msg.empty?
+        end
+      end
+      raise 'WebSocket Upgrade header not "websocket"' unless upgrade == 'websocket'
+      raise 'WebSocket Connection header not "Upgrade"' unless connection == 'Upgrade'
+      # validate the acceptance haeder
+      response_to_hash = "#{websocket_key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+      websocket_accept = Digest::SHA1.base64digest(response_to_hash)
+      raise 'Invalid WebSocket acceptance' unless acceptance == websocket_accept
+    rescue => e
+      logger.error e.message
+      logger.info 'Client shutting down'
+      socket.close unless socket.closed?
+    end
+
+    client = self.new(socket,
+      path: path, host: host, origin: origin, is_client: true,
+      logger: logger,
+    )
+    Thread.new { client.serve }
+    client
+  end
 end
 
 # This is a stand-alone WebSocket implementation that uses only Ruby sockets
@@ -399,17 +400,21 @@ class WebSocketServer
   #   host: hostname from which to serve WebSockets
   #   port: port from which to serve WebSockets
   #   logger: logger override to use for log messages (defaults to STDOUT)
-  #   client_handler: class to use for handling WebSocket client functionality
-  #     instead of WebSocketClient once a WebSocket connection is established
   def initialize(opts = {})
     @host = opts[:host]
     @port = opts[:port]
     @logger = opts[:logger]
-    @client_handler = opts[:client_handler] || WebSocketClient
+    @handlers = opts[:handlers] || Hash.new{|h, v| h[v] = []}
+    @server = nil
     unless @logger
       @logger = Logger.new(STDOUT)
       @logger.level = Logger::WARN
     end
+  end
+
+  def on(action, func = nil, &block)
+    func ||= block
+    @handlers[action] << func
   end
 
   # Starts the WebSocket server, spawns a new thread for every request
@@ -433,7 +438,15 @@ class WebSocketServer
 
   # Stops the main WebSocket server thread
   def stop!
+    return unless running?
+    @logger.info 'Stopping WebSocket server'
     @server_thread.kill if @server_thread
+    @server.close
+  end
+
+  # Returns true only when the server is running
+  def running?
+    !(@server.nil? || @server.closed?)
   end
 
   private
@@ -506,7 +519,9 @@ class WebSocketServer
       return
     end
 
-    @logger.info "Additional WebSocket headers: #{other_headers.join('#')}"
+    unless other_headers.empty?
+      @logger.info "Additional WebSocket headers: #{other_headers.join('#')}"
+    end
 
     # Optional header
     # See notes about "Origin Considerations" in the RFC:
@@ -526,8 +541,9 @@ class WebSocketServer
     response = response.split("\n", -1).map {|l| l.strip}
     response = response.join("\r\n")
     socket.write response
-    client = @client_handler.new(socket,
+    client = WebSocketClient.new(socket,
       path: path, host: host, origin: origin,
+      handlers: @handlers,
       logger: @logger,
     )
     # serves indefinitely
@@ -618,6 +634,9 @@ if $PROGRAM_NAME == __FILE__
     logger: ws_logger,
   }
   websocket_server = WebSocketServer.new sock_opts
+  websocket_server.on(:text) do |client, payload, last_frame|
+    client.send_frame(1, 'Hello!')
+  end
 
   [:INT, :TERM].each do |sig|
     trap(sig) { http_server.stop; websocket_server.stop! }
