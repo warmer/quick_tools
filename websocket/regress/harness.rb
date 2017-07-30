@@ -1,7 +1,7 @@
 require 'logger'
 require 'digest'
 require 'timeout'
-require_relative '../server.rb'
+require_relative '../websocket.rb'
 
 class Harness
   PROJ_ROOT ||= File.dirname(File.dirname(File.expand_path(__FILE__)))
