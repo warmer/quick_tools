@@ -6,15 +6,20 @@ require_relative '../websocket.rb'
 class Harness
   PROJ_ROOT ||= File.dirname(File.dirname(File.expand_path(__FILE__)))
 
+  attr_reader :websocket_log
+
   def initialize(opts = {})
     @port = opts[:port] || 9881
     @host = opts[:host] || 'localhost'
-    @log = StringIO.new
+    @websocket_log = StringIO.new
   end
 
   def self.run_test(opts = {}, &blk)
     harness = Harness.new(opts)
     harness.instance_exec(&blk)
+    harness.log
+    harness.scenario 'Client and server logs:'
+    harness.log(harness.websocket_log.string)
   end
 
   def start_websocket_server
@@ -34,7 +39,7 @@ class Harness
   end
 
   def make_logger
-    log = Logger.new(@log)
+    log = Logger.new(@websocket_log)
     log.formatter = proc { |sev, dt, name, msg|
       "#{sev.to_s.ljust(6, ' ')} #{name} #{msg.to_s.strip}\n"
     }

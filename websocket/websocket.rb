@@ -47,10 +47,11 @@ class WebSocketClient
 
   # Initializer for an established websocket connection
   #
-  # Options include:
+  # @params [TCPSocket] socket
+  # @params Options include:
   #   :logger [Logger] to use for logging (defaults to STDOUT)
   #   :client [Boolean] true when acting as the client, not the server
-  # @params [TCPSocket] socket
+  #   :handlers [Hash] custom event handlers for different message types
   def initialize(socket, opts = {})
     @socket = socket
     @logger = opts[:logger] || Logger.new(STDOUT)
@@ -63,6 +64,22 @@ class WebSocketClient
     @closing = false
     @previous_opcode = nil
     @serve_thread = nil
+
+    @default_handlers = Hash.new {|h, v| h[v] = []}
+    set_default_handlers
+  end
+
+  def set_default_handlers
+    @default_handlers[:ping] << lambda {|_c, body| send_frame(:pong, body)}
+    @default_handlers[:close] << lambda do |_c, _b|
+      if @closing
+        @serve_thread.kill
+        @socket.close
+      else
+        send_frame(:close)
+        @closing = true
+      end
+    end
   end
 
   # Executes the given block when the specified action occurs
@@ -235,17 +252,20 @@ class WebSocketClient
     # a reference to the calling client is added as the first argument
     args.unshift(self)
     @handlers[type].dup.each { |handler| handler.call(*args) }
+    @default_handlers[type].dup.each { |handler| handler.call(*args) }
   end
 
   # sends a WebSocket frame to the client with the given opcode and
   # determines all other field values.
-  # @param [Integer] opcode - the opcode to send
+  # @param [Integer|Symbol] opcode - the opcode (or opcode name symbol) to send
   # @param [String] payload
   # @param [Boolean] first_frame - False when this is a continuation message,
   #   so the opcode should be 0
   # @param [Boolean] last_frame - True when the 'FIN' bit should be set,
   #   indicating there are no additional payloads for this message
   def send_frame(opcode, payload = '', first_frame = true, last_frame = true)
+    opcode = OPCODES.key(opcode) if opcode.is_a? Symbol
+    payload = payload.string if payload.is_a? StringIO
     payload = payload.force_encoding('BINARY')
     # "continuation" frame
     header = opcode
@@ -285,6 +305,8 @@ class WebSocketClient
       payload = masked_data.pack('C*')
     end
 
+    @closing = true if OPCODES[opcode] == :close
+
     @socket.send(ws_header.string, 0)
     @socket.send(payload, 0)
   end
@@ -292,7 +314,8 @@ class WebSocketClient
   # Connect, as a client, to the given host:port and path
   # This will complete negotiation of an outgoing WebSocket connection,
   # including the generation and validation of the WebSocket Key/Accept
-  # headers.
+  # headers. Note that this does NOT being serving immediate to allow the
+  # application to properly set handlers for incoming requests
   #
   # @param [String] host - destination websocket server host
   # @param [String] port - port for the destination websocket server
