@@ -42,7 +42,7 @@ class Harness
     log
   end
 
-  def connect(opts = {})
+  def connect_client(opts = {})
     Timeout::timeout(1) do
       WebSocketClient.connect(@host, @port, opts.merge(logger: make_logger))
     end

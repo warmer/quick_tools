@@ -19,7 +19,8 @@ Harness.run_test do
   end
 
   log 'Connect a client'
-  client = connect
+  client = connect_client
+  client.serve!
   log 'Set a handler for receiving text on the client'
   client.on(:text) do |_conn, payload, _last_frame|
     log "Received #{payload.string} as client"

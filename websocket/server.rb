@@ -36,6 +36,15 @@ class WebSocketClient
   require 'socket'
   require 'securerandom'
 
+  OPCODES = {
+    0 => :continuation,
+    1 => :text,
+    2 => :binary,
+    8 => :close,
+    9 => :ping,
+    10 => :pong,
+  }.freeze
+
   # Initializer for an established websocket connection
   #
   # Options include:
@@ -53,175 +62,179 @@ class WebSocketClient
     # a connection_close_frame and is waiting for the client response
     @closing = false
     @previous_opcode = nil
+    @serve_thread = nil
   end
 
   # Executes the given block when the specified action occurs
+  #
+  # @param [Symbol] action - the name of the action
+  # @param [Proc or lambda] func - a callable object
+  # @param [Block] block - code block
   def on(action, func = nil, &block)
     func ||= block
     @handlers[action] << func
   end
 
-  # Called to handle incoming WebSocket frames from a client. Will not return
-  # until the socket is closed.
-  def serve
-    loop do
-      # BASE FRAMING PROTOCOL (from https://tools.ietf.org/html/rfc6455)
-      # | ---------------------- 32-bit word -------------------------- |
-      # |                                                               |
-      # |               |1 1 1 1 1 1    |2 2 2 2 1 1 1 1|3 3 2 2 2 2 2 2|
-      # |7 6 5 4 3 2 1 0|5 4 3 2 1 0 9 8|3 2 1 0 9 8 7 6|1 0 9 8 7 6 5 4|
-      # +-+-+-+-+-------+-+-------------+-------------------------------+
-      # |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
-      # |I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |
-      # |N|V|V|V|       |S|             |   (if payload len==126/127)   |
-      # | |1|2|3|       |K|             |                               |
-      # +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
-      # |     Extended payload length continued, if payload len == 127  |
-      # + - - - - - - - - - - - - - - - +-------------------------------+
-      # |                               |Masking-key, if MASK set to 1  |
-      # +-------------------------------+-------------------------------+
-      # | Masking-key (continued)       |          Payload Data         |
-      # +-------------------------------- - - - - - - - - - - - - - - - +
-      # :                     Payload Data continued ...                :
-      # + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
-      # |                     Payload Data continued ...                |
-      # +---------------------------------------------------------------+
-
-      # The first two bytes in any frame always include the header byte
-      # and the frame length
-      header, len = @socket.recv(2).unpack('C*')
-      # a connection may be closed by the client and recv will still return
-      return unless header && len
-      # FIN is set when this is either a control message or the last frame
-      # in a fragmented message
-      last_frame = (header & (1 << 7)) > 0
-      # NOTE not validated: bits [4-6] of the header should always be unset
-      opcode = (header & 0xf)
-      is_masked = (len & (1 << 7)) > 0
-
-      # A client MUST mask all frames that it sends to the server, and the
-      # server MUST close the connection upon receiving an unmasked frame
-      unless @is_client || is_masked
-        @logger.error 'Detected unmasked frame as server: closing connection'
-        socket.close
-        return
-      end
-
-      # A server MUST NOT mask ANY frames that it sends to the client, and
-      # the client MUST close a connection if it detects a masked frame
-      if @is_client && is_masked
-        @logger.error 'Detected masked frame as client: closing connection'
-        socket.close
-        return
-      end
-
-      # Handle message fragmentation
-      # See notes on Fragmentation in the RFC:
-      # https://tools.ietf.org/html/rfc6455#section-5.4
-
-      continuation = opcode.zero?
-      control_frame = opcode >= 8
-      fragment_in_progress = !@previous_opcode.nil?
-
-      # Handle fragmentation error states
-
-      # control frames must not be fragmented
-      if control_frame && !last_frame
-        @logger.error "Control frame (#{opcode}) cannot be fragmented"
-        socket.close
-        return
-
-      # fragments must not be interleaved (since we don't support extensions)
-      # with non-control frames
-      elsif fragment_in_progress && !continuation && !control_frame
-        @logger.error "Received invalid opcode (#{opcode}) during fragmented transfer"
-        socket.close
-        return
-
-      # cannot receive continuation messages unless there's already a
-      # fragmented message in progress
-      elsif continuation && !fragment_in_progress
-        @logger.error 'Received invalid continuation frame'
-        socket.close
-        return
-
-      end
-
-      unless control_frame
-        # Use the previous opcode if there is a fragment in progress
-        opcode = @previous_opcode || opcode
-        # reset the opcode if this is the last frame
-        @previous_opcode = last_frame ? nil : opcode
-      end
-
-      # special cases with the payload size:
-      # if 126, next 2 bytes are the real size
-      # if 127, next 8 bytes are the real size
-      payload_size = (len & 0x7f)
-      if payload_size == 126
-        # unpack as network-order 16-bit unsigned integer
-        payload_size = @socket.recv(2).unpack('n').first
-      elsif payload_size == 127
-        # unpack as two network-order 32-bit unsigned integers
-        size_words = @socket.recv(8).unpack('N')
-        # append the integers for the full length
-        payload_size = size_words[0] << 32 + size_words[1]
-      end
-      @logger.info "Payload size: #{payload_size} B"
-
-      # If the 'MASK' bit was set, then 4 bytes are provided to the server
-      # to be used as an XOR mask for incoming bytes
-      # These bytes do *not* count against the payload size
-      mask = is_masked ? @socket.recv(4).unpack('C*') : nil
-
-      # Receive the entire payload
-      # NOTE that this would need to be done differently to handle large
-      # payload transfers since we read the entire payload before moving on,
-      # making us vulnerable to clients sending large payloads
-      payload = StringIO.new
-      payload.set_encoding('BINARY')
-      while payload_size > 0
-        # read the payload in chunks
-        to_read = [1024, payload_size].min
-        payload_size -= to_read
-
-        data = @socket.recv(to_read).unpack('C*')
-        data = data.each_with_index.map {|b, idx| b ^ mask[idx & 3] } if mask
-        payload.write data.pack('C*')
-      end
-
-      case opcode
-      when 0
-        # opcode should be overridden by the original opcode for a fragmented
-        # message when a continuation frame is sent
-        @logger.error 'Recieved ambiguous contination frame'
-        socket.close
-        return
-      when 1
-        emit(:text, payload, last_frame)
-      when 2
-        emit(:binary, payload, last_frame)
-      # control frames are >= 8 (bit 3 is set)
-      when 8
-        emit(:control_close, payload, last_frame)
-        # TODO: per spec, need to actually close
-      when 9
-        emit(:ping, payload)
-      when 10
-        emit(:pong, payload)
-      else
-        @logger.error("Unsupported opcode: #{opcode}")
-        socket.close
-        return
-      end
-    end
+  # Called to immediately stop handling requests
+  def stop!
+    return unless serving?
+    @serve_thread.kill
   end
 
-  def emit(type, *args)
-    args.unshift(self)
-    @handlers[type].dup.each do |handler|
-      handler.call(*args)
+  # Returns true only when the client is actively serving
+  def serving?
+    @serve_thread && @serve_thread.alive? && @socket && !@socket.closed?
+  end
+
+  # Called to start handling incoming WebSocket frames from a client
+  #
+  # @return [Thread] the thread handling incoming requests
+  def serve!
+    @serve_thread = Thread.new do
+      loop do
+        # BASE FRAMING PROTOCOL (from https://tools.ietf.org/html/rfc6455)
+        # | ---------------------- 32-bit word -------------------------- |
+        # |                                                               |
+        # |               |1 1 1 1 1 1    |2 2 2 2 1 1 1 1|3 3 2 2 2 2 2 2|
+        # |7 6 5 4 3 2 1 0|5 4 3 2 1 0 9 8|3 2 1 0 9 8 7 6|1 0 9 8 7 6 5 4|
+        # +-+-+-+-+-------+-+-------------+-------------------------------+
+        # |F|R|R|R| opcode|M| Payload len |    Extended payload length    |
+        # |I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |
+        # |N|V|V|V|       |S|             |   (if payload len==126/127)   |
+        # | |1|2|3|       |K|             |                               |
+        # +-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+        # |     Extended payload length continued, if payload len == 127  |
+        # + - - - - - - - - - - - - - - - +-------------------------------+
+        # |                               |Masking-key, if MASK set to 1  |
+        # +-------------------------------+-------------------------------+
+        # | Masking-key (continued)       |          Payload Data         |
+        # +-------------------------------- - - - - - - - - - - - - - - - +
+        # :                     Payload Data continued ...                :
+        # + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
+        # |                     Payload Data continued ...                |
+        # +---------------------------------------------------------------+
+
+        # The first two bytes in any frame always include the header byte
+        # and the frame length
+        header, len = @socket.recv(2).unpack('C*')
+        # a connection may be closed by the client and recv will still return
+        return unless header && len
+        # FIN is set when this is either a control message or the last frame
+        # in a fragmented message
+        last_frame = (header & (1 << 7)) > 0
+        # NOTE not validated: bits [4-6] of the header should always be unset
+        opcode = (header & 0xf)
+        is_masked = (len & (1 << 7)) > 0
+
+        opcode_type = OPCODES[opcode]
+        unless opcode_type
+          @logger.error "Unknown opcode: #{opcode}"
+          @socket.close
+          return
+        end
+
+        # A client MUST mask all frames that it sends to the server, and the
+        # server MUST close the connection upon receiving an unmasked frame
+        unless @is_client || is_masked
+          @logger.error 'Detected unmasked frame as server: closing connection'
+          @socket.close
+          return
+        end
+
+        # A server MUST NOT mask ANY frames that it sends to the client, and
+        # the client MUST close a connection if it detects a masked frame
+        if @is_client && is_masked
+          @logger.error 'Detected masked frame as client: closing connection'
+          @socket.close
+          return
+        end
+
+        # Handle message fragmentation
+        # See notes on Fragmentation in the RFC:
+        # https://tools.ietf.org/html/rfc6455#section-5.4
+
+        continuation = opcode.zero?
+        control_frame = opcode >= 8
+        fragment_in_progress = !@previous_opcode.nil?
+
+        # Detect fragmentation error states
+
+        # control frames must not be fragmented
+        if control_frame && !last_frame
+          @logger.error "Control frame (#{opcode}) cannot be fragmented"
+          @socket.close
+          return
+        # fragments must not be interleaved (since we don't support extensions)
+        # with non-control frames
+        elsif fragment_in_progress && !continuation && !control_frame
+          @logger.error "Received invalid opcode (#{opcode}) during fragmented transfer"
+          @socket.close
+          return
+        # cannot receive continuation messages unless there's already a
+        # fragmented message in progress
+        elsif continuation && !fragment_in_progress
+          @logger.error 'Received invalid continuation frame'
+          @socket.close
+          return
+        end
+
+        unless control_frame
+          # Use the previous opcode if there is a fragment in progress
+          opcode = @previous_opcode || opcode
+          # reset the opcode if this is the last frame
+          @previous_opcode = last_frame ? nil : opcode
+        end
+
+        # special cases with the payload size:
+        # if 126, next 2 bytes are the real size
+        # if 127, next 8 bytes are the real size
+        payload_size = (len & 0x7f)
+        if payload_size == 126
+          # unpack as network-order 16-bit unsigned integer
+          payload_size = @socket.recv(2).unpack('n').first
+        elsif payload_size == 127
+          # unpack as two network-order 32-bit unsigned integers
+          size_words = @socket.recv(8).unpack('N')
+          # append the integers for the full length
+          payload_size = size_words[0] << 32 + size_words[1]
+        end
+        @logger.info "Payload size: #{payload_size} B"
+
+        # If the 'MASK' bit was set, then 4 bytes are provided to the server
+        # to be used as an XOR mask for incoming bytes
+        # These bytes do *not* count against the payload size
+        mask = is_masked ? @socket.recv(4).unpack('C*') : nil
+
+        # Receive the entire payload
+        # NOTE that this would need to be done differently to handle large
+        # payload transfers since we read the entire payload before moving on,
+        # making us vulnerable to clients sending large payloads
+        payload = StringIO.new
+        payload.set_encoding('BINARY')
+        while payload_size > 0
+          # read the payload in chunks
+          to_read = [1024, payload_size].min
+          payload_size -= to_read
+
+          data = @socket.recv(to_read).unpack('C*')
+          data = data.each_with_index.map {|b, idx| b ^ mask[idx & 3] } if mask
+          payload.write data.pack('C*')
+        end
+
+        emit(opcode_type, payload)
+      end
     end
+    @serve_thread
+  end
+
+  # Invoke any provided custom handlers for the given event type
+  #
+  # @param [Symbol] type - the event type
+  # @param [Array] *args - arguments to provide to the block handler
+  def emit(type, *args)
+    # a reference to the calling client is added as the first argument
+    args.unshift(self)
+    @handlers[type].dup.each { |handler| handler.call(*args) }
   end
 
   # sends a WebSocket frame to the client with the given opcode and
@@ -249,6 +262,7 @@ class WebSocketClient
     # the MASK bit must be set for all client frames
     payload_len = @is_client ? 0x80 : 0
 
+    # determine the length to send in the request
     if payload.length < 126
       ws_header.write((payload_len | payload.length).chr)
     elsif payload.length < (2**16)
@@ -367,12 +381,10 @@ class WebSocketClient
       socket.close unless socket.closed?
     end
 
-    client = self.new(socket,
+    self.new(socket,
       path: path, host: host, origin: origin, is_client: true,
       logger: logger,
     )
-    Thread.new { client.serve }
-    client
   end
 end
 
@@ -412,6 +424,7 @@ class WebSocketServer
     end
   end
 
+  # Def
   def on(action, func = nil, &block)
     func ||= block
     @handlers[action] << func
@@ -546,8 +559,8 @@ class WebSocketServer
       handlers: @handlers,
       logger: @logger,
     )
-    # serves indefinitely
-    client.serve
+    # serves until the underlying thread ends
+    client.serve!.join
   end
 
   def respond_400(socket, message)
