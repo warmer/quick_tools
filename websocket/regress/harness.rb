@@ -1,7 +1,8 @@
 require 'logger'
 require 'digest'
 require 'timeout'
-require_relative '../websocket.rb'
+require_relative '../websocket_client'
+require_relative '../websocket_server'
 
 class Harness
   PROJ_ROOT ||= File.dirname(File.dirname(File.expand_path(__FILE__)))
@@ -28,7 +29,7 @@ class Harness
       host: @host,
       logger: make_logger,
     }
-    @socket_server = WebSocketServer.new(options)
+    @socket_server = WebSocket::Server.new(options)
     @socket_server.run!
     Timeout::timeout(1) { @socket_server.running? }
     @socket_server
@@ -49,7 +50,7 @@ class Harness
 
   def connect_client(opts = {})
     Timeout::timeout(1) do
-      WebSocketClient.connect(@host, @port, opts.merge(logger: make_logger))
+      WebSocket::Client.connect(@host, @port, opts.merge(logger: make_logger))
     end
   end
 
