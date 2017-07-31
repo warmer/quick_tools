@@ -41,6 +41,10 @@ module WebSocket
     require 'digest'
     require_relative 'websocket_client'
 
+    SERVER_ACTIONS = [
+      :client_connect, :client_disconnect,
+    ]
+
     # Configures the WebSocketServer, but does not start the server
     # TODO: provide access to connected clients
     # @params [Hash] opts - options hash supporting:
@@ -51,7 +55,10 @@ module WebSocket
       @host = opts[:host]
       @port = opts[:port]
       @logger = opts[:logger]
-      @handlers = opts[:handlers] || Hash.new{|h, v| h[v] = []}
+      @client_handlers = Hash.new{|h, v| h[v] = []}
+      @server_handlers = Hash.new{|h, v| h[v] = []}
+      @clients = {}
+      @client_mutex = Mutex.new
       @server = nil
       unless @logger
         @logger = Logger.new(STDOUT)
@@ -59,16 +66,19 @@ module WebSocket
       end
     end
 
-    # Define custom action handlers for incoming frame events
+    # Registers a custom action handler for client events
     # Executes the given code when the specified action occurs
     #
     # @param [Symbol] action - the name of the action
     # @param [Proc or lambda] func - a callable object
     # @param [Block] block - code block
-
     def on(action, func = nil, &block)
       func ||= block
-      @handlers[action] << func
+      if SERVER_ACTIONS.include?(action)
+        @server_handlers[action] << func
+      else
+        @client_handlers[action] << func
+      end
     end
 
     # Starts the WebSocket server, spawns a new thread for every request
@@ -83,6 +93,12 @@ module WebSocket
               @logger.error e.message
               @logger.error e.backtrace
             ensure
+              @client_mutex.synchronize do
+                closing_client = @clients.delete(socket)
+              end
+              # invoke callbacks for disconnect if there is a client to
+              # disconnect
+              emit(:client_disconnect, closing_client) if closing_client
               socket.close
             end
           end
@@ -103,7 +119,24 @@ module WebSocket
       !(@server.nil? || @server.closed?)
     end
 
+    # Returns an array of all connected clients
+    #
+    # @return [Array] all currently-connected clients
+    def connected_clients
+      @client_mutex.synchronize do
+        @clients.values.dup
+      end
+    end
+
     private
+
+    # Invoke any provided custom handlers for the given event type
+    #
+    # @param [Symbol] type - the event type
+    # @param [Array] *args - arguments to provide to the block handler
+    def emit(type, *args)
+      @server_handlers[type].dup.each { |handler| handler.call(*args) }
+    end
 
     # This handles reading the WebSocket request from a client, validating the
     # request, and then serving content if the request appears to be valid
@@ -197,13 +230,25 @@ module WebSocket
       socket.write response
       client = WebSocket::Client.new(socket,
         path: path, host: host, origin: origin,
-        handlers: @handlers,
+        handlers: @client_handlers,
         logger: @logger,
       )
+      # start handling frames for the connection
+      client_serve_thread = client.serve!
+      @client_mutex.synchronize do
+        # add to our awareness of connected clients
+        @clients[socket] = client
+      end
+      # emit the corresponding handler
+      emit(:client_connect, client)
       # serves until the underlying thread ends
-      client.serve!.join
+      client_serve_thread.join
     end
 
+    # Sends a valid 400 error to the connecting client
+    #
+    # @param [TCPSocket] socket - the TCP socket to the client
+    # @param [String] message - the error message to send
     def respond_400(socket, message)
       @logger.warn message
       message = message.force_encoding('BINARY')

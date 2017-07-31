@@ -50,12 +50,10 @@ module WebSocket
     # @params Options include:
     #   :logger [Logger] to use for logging (defaults to STDOUT)
     #   :client [Boolean] true when acting as the client, not the server
-    #   :handlers [Hash] custom event handlers for different message types
     def initialize(socket, opts = {})
       @socket = socket
       @logger = opts[:logger] || Logger.new(STDOUT)
       @is_client = opts[:is_client]
-      @handlers = opts[:handlers] || Hash.new {|h, v| h[v] = []}
 
       # sent to indicate that the connection is closing
       # the only time this should be true is when the server initiates
@@ -64,17 +62,9 @@ module WebSocket
       @previous_opcode = nil
       @serve_thread = nil
 
+      @handlers = opts[:handlers] || Hash.new {|h, v| h[v] = []}
       @default_handlers = Hash.new {|h, v| h[v] = []}
       set_default_handlers
-    end
-
-    def set_default_handlers
-      @default_handlers[:ping] << lambda {|_c, body| send_frame(:pong, body)}
-      @default_handlers[:close] << lambda do |_c, _b|
-        send_frame(:close) unless @closing rescue nil
-        @serve_thread.kill
-        @socket.close
-      end
     end
 
     # Define custom action handlers for incoming frame events
@@ -240,17 +230,6 @@ module WebSocket
       @serve_thread
     end
 
-    # Invoke any provided custom handlers for the given event type
-    #
-    # @param [Symbol] type - the event type
-    # @param [Array] *args - arguments to provide to the block handler
-    def emit(type, *args)
-      # a reference to the calling client is added as the first argument
-      args.unshift(self)
-      @handlers[type].dup.each { |handler| handler.call(*args) }
-      @default_handlers[type].dup.each { |handler| handler.call(*args) }
-    end
-
     # sends a WebSocket frame to the client with the given opcode and
     # determines all other field values.
     # @param [Integer|Symbol] opcode - the opcode (or opcode name symbol) to send
@@ -404,6 +383,35 @@ module WebSocket
         path: path, host: host, origin: origin, is_client: true,
         logger: logger,
       )
+    end
+
+    private
+
+    # Behavior that must occur on various events to be compliant with the
+    # the WebSocket RFC (RFC6455)
+    def set_default_handlers
+      # And endpoint MUST send a Pong frame in response to a Ping (unless
+      # it has already received a Close frame)
+      @default_handlers[:ping] << lambda {|_c, body| send_frame(:pong, body)}
+      # Must always respond with a close frame when not initiating
+      @default_handlers[:close] << lambda do |_c, _b|
+        # If we received a close frame, it's quite possible that we'll be
+        # interrupted while sending, so rescue
+        send_frame(:close) unless @closing rescue nil
+        @serve_thread.kill
+        @socket.close
+      end
+    end
+
+    # Invoke any provided custom handlers for the given event type
+    #
+    # @param [Symbol] type - the event type
+    # @param [Array] *args - arguments to provide to the block handler
+    def emit(type, *args)
+      # a reference to the calling client is added as the first argument
+      args.unshift(self)
+      @handlers[type].dup.each { |handler| handler.call(*args) }
+      @default_handlers[type].dup.each { |handler| handler.call(*args) }
     end
   end
 end

@@ -5,7 +5,7 @@ require_relative 'harness.rb'
 Harness.run_test do
   scenario 'Send a ping from the client to the server'
 
-  client_received = false
+  client_received = server_received = false
 
   log 'Start websocket server'
   server = start_websocket_server
@@ -20,13 +20,24 @@ Harness.run_test do
     client_received = true
   end
 
+  log 'Set a handler for receiving pongs on the server'
+  server.on(:pong) do |_c, payload|
+    log "Received pong with #{payload.string} as server"
+    server_received = true
+  end
+
   log 'Send a ping from the client to the server'
   client.send_frame(:ping, 'Hello?')
+
+  scenario 'Send a ping from the server to the client'
+  server.connected_clients.each do |server_client|
+    server_client.send_frame(:ping, 'ServerHello?')
+  end
 
   # Wait for activity on both the client and the server to complete
   Timeout::timeout(1) do
     loop do
-      break if client_received
+      break if client_received && server_received
       sleep 0.1
     end
   end
