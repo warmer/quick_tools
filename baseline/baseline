@@ -89,10 +89,11 @@ class Baseline
   # @return [Array] - results from each test
   def self.capture_tests(files, options)
     files.map do |file|
-      bl_path = "#{file}.baseline"
+      test_path = File.expand_path(file)
+      bl_path = "#{test_path}.baseline"
       baseline = File.exist?(bl_path) ? bin_encode(File.read(bl_path)) : nil
       start_test_log(file) unless options[:silent]
-      stdout, stderr, status = Open3.capture3(file)
+      stdout, stderr, status = Open3.capture3(test_path)
       result = {file: file, stdout: stdout, stderr: stderr}
 
       if result[:stderr].empty? && bin_encode(result[:stdout]) == baseline
