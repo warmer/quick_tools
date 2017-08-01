@@ -1,5 +1,34 @@
 Changing directories into "tests/"
 ################################################################################
+# Run baseline from a different dir against files in a dir                     #
+################################################################################
+
+../baseline *
+non_executable.rb                                             [ NOT EXECUTABLE ]
+nested/no_baseline.rb                                                [ MISSING ]
+no_baseline.rb                                                       [ MISSING ]
+no_baseline_raises_error.rb                                          [ MISSING ]
+baselined_out_of_date.rb                                              [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+baselined_out_of_date_with_error.rb                                   [ FAILED ]
+3c3
+< This line changed
+---
+> This line updated
+======== STDERR ========
+[base]/tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+baselined_raises_error.rb                                             [ FAILED ]
+======== STDERR ========
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+nested/up_to_date.rb                                                  [ PASSED ]
+up_to_date.rb                                                         [ PASSED ]
+Passed: 2; Failed: 3; Skipped: 4
+Status code: 3
+
+################################################################################
 # Run baseline from a different dir against a dir                              #
 ################################################################################
 
@@ -17,10 +46,10 @@ Changing directories into "tests/"
 ---
 > This line updated
 ======== STDERR ========
-./baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+[base]/tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
 ./baselined_raises_error.rb                                           [ FAILED ]
 ======== STDERR ========
-./baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
 ./up_to_date.rb                                                       [ PASSED ]
 Passed: 1; Failed: 3; Skipped: 2
 Status code: 3
@@ -44,10 +73,10 @@ Status code: 3
 ---
 > This line updated
 ======== STDERR ========
-./baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+[base]/tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
 ./baselined_raises_error.rb                                           [ FAILED ]
 ======== STDERR ========
-./baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
 ./up_to_date.rb                                                       [ PASSED ]
 Passed: 1; Failed: 3; Skipped: 3
 Status code: 3
