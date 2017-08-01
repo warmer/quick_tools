@@ -46,7 +46,6 @@ module WebSocket
     ]
 
     # Configures the WebSocketServer, but does not start the server
-    # TODO: provide access to connected clients
     # @params [Hash] opts - options hash supporting:
     #   host: hostname from which to serve WebSockets
     #   port: port from which to serve WebSockets
