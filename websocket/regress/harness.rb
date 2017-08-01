@@ -13,6 +13,7 @@ class Harness
     @port = opts[:port] || 9881
     @host = opts[:host] || 'localhost'
     @websocket_log = StringIO.new
+    @log_mutex = Mutex.new
   end
 
   def self.run_test(opts = {}, &blk)
@@ -59,8 +60,10 @@ class Harness
   end
 
   def log(line = '')
-    puts sanitize(line)
-    $stdout.flush
+    @log_mutex.synchronize do
+      puts sanitize(line)
+      $stdout.flush
+    end
   end
 
   def scenario(name)

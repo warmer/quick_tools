@@ -89,11 +89,11 @@ module WebSocket
             begin
               handle_request(socket)
             rescue => e
-              @logger.error e.message
-              @logger.error e.backtrace
+              @logger.error "#{e.class}: #{e.message}"
+              @logger.debug e.backtrace
             ensure
-              @client_mutex.synchronize do
-                closing_client = @clients.delete(socket)
+              closing_client = @client_mutex.synchronize do
+                @clients.delete(socket)
               end
               # invoke callbacks for disconnect if there is a client to
               # disconnect
@@ -109,6 +109,11 @@ module WebSocket
     def stop!
       return unless running?
       @logger.info 'Stopping WebSocket server'
+      @client_mutex.synchronize do
+        @clients.each do |socket, client|
+          client.stop!
+        end
+      end
       @server_thread.kill if @server_thread
       @server.close
     end

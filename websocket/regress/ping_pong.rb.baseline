@@ -13,7 +13,7 @@ Received pong with Hello? as client
 
 Set a handler for receiving pongs on the server
 Received pong with ServerHello? as server
-Stop websocket server
+Stop the client
 
 ################################################################################
 # Client and server logs:                                                      #
@@ -25,4 +25,3 @@ INFO    Payload size: 6 B
 INFO    Payload size: 6 B
 INFO    Payload size: 12 B
 INFO    Payload size: 12 B
-INFO    Stopping WebSocket server

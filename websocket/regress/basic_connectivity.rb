@@ -37,6 +37,6 @@ Harness.run_test do
     end
   end
 
-  log 'Stop websocket server'
-  server.stop!
+  log 'Stop the client'
+  client.stop!
 end

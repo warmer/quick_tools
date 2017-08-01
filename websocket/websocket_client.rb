@@ -44,6 +44,8 @@ module WebSocket
       10 => :pong,
     }.freeze
 
+    attr_reader :path, :host, :origin
+
     # Initializer for an established websocket connection
     #
     # @params [TCPSocket] socket
@@ -54,6 +56,9 @@ module WebSocket
       @socket = socket
       @logger = opts[:logger] || Logger.new(STDOUT)
       @is_client = opts[:is_client]
+      @path = opts[:path]
+      @host = opts[:host]
+      @origin = opts[:origin]
 
       # sent to indicate that the connection is closing
       # the only time this should be true is when the server initiates
@@ -81,6 +86,7 @@ module WebSocket
     # Called to immediately stop handling requests
     def stop!
       return unless serving?
+      @socket.close
       @serve_thread.kill
     end
 
@@ -121,7 +127,7 @@ module WebSocket
           # and the frame length
           header, len = @socket.recv(2).unpack('C*')
           # a connection may be closed by the client and recv will still return
-          return unless header && len
+          break unless header && len
           # FIN is set when this is either a control message or the last frame
           # in a fragmented message
           last_frame = (header & (1 << 7)) > 0
@@ -398,6 +404,7 @@ module WebSocket
         # If we received a close frame, it's quite possible that we'll be
         # interrupted while sending, so rescue
         send_frame(:close) unless @closing rescue nil
+        @socket.flush
         @serve_thread.kill
         @socket.close
       end
