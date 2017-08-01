@@ -18,11 +18,11 @@ tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
 +This line updated
  This is the same
 ======== STDERR ========
-tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+[base]/tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
 tests/baselined_raises_error.rb                                       [ FAILED ]
  Baselined!
 ======== STDERR ========
-tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
 tests/up_to_date.rb                                                   [ PASSED ]
 Passed: 1; Failed: 3; Skipped: 2
 Status code: 3

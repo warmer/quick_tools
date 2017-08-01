@@ -7,16 +7,16 @@ tests/non_executable.rb                                       [ NOT EXECUTABLE ]
 tests/baselined_out_of_date.rb                                       [ UPDATED ]
 tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
 ======== STDERR ========
-tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
+[base]/tests/baselined_out_of_date_with_error.rb:7:in `<main>': Whoops! (RuntimeError)
 tests/baselined_raises_error.rb                                       [ FAILED ]
 ======== STDERR ========
-tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+[base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
 tests/nested/no_baseline.rb                                          [ UPDATED ]
 tests/nested/up_to_date.rb                                            [ PASSED ]
 tests/no_baseline.rb                                                 [ UPDATED ]
 tests/no_baseline_raises_error.rb                                     [ FAILED ]
 ======== STDERR ========
-tests/no_baseline_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+[base]/tests/no_baseline_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
 tests/up_to_date.rb                                                   [ PASSED ]
 Passed: 2; Failed: 3; Updated: 3; Skipped: 1
 Status code: 3
