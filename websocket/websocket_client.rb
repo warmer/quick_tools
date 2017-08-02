@@ -45,6 +45,7 @@ module WebSocket
     }.freeze
 
     attr_reader :path, :host, :origin
+    attr_reader :socket
 
     # Initializer for an established websocket connection
     #
@@ -139,7 +140,7 @@ module WebSocket
           unless opcode_type
             @logger.error "Unknown opcode: #{opcode}"
             @socket.close
-            return
+            break
           end
 
           # A client MUST mask all frames that it sends to the server, and the
@@ -147,7 +148,7 @@ module WebSocket
           unless @is_client || is_masked
             @logger.error 'Detected unmasked frame as server: closing connection'
             @socket.close
-            return
+            break
           end
 
           # A server MUST NOT mask ANY frames that it sends to the client, and
@@ -155,7 +156,7 @@ module WebSocket
           if @is_client && is_masked
             @logger.error 'Detected masked frame as client: closing connection'
             @socket.close
-            return
+            break
           end
 
           # Handle message fragmentation
@@ -172,19 +173,19 @@ module WebSocket
           if control_frame && !last_frame
             @logger.error "Control frame (#{opcode}) cannot be fragmented"
             @socket.close
-            return
+            break
           # fragments must not be interleaved (since we don't support extensions)
           # with non-control frames
           elsif fragment_in_progress && !continuation && !control_frame
             @logger.error "Received invalid opcode (#{opcode}) during fragmented transfer"
             @socket.close
-            return
+            break
           # cannot receive continuation messages unless there's already a
           # fragmented message in progress
           elsif continuation && !fragment_in_progress
             @logger.error 'Received invalid continuation frame'
             @socket.close
-            return
+            break
           end
 
           unless control_frame
@@ -246,6 +247,7 @@ module WebSocket
     #   indicating there are no additional payloads for this message
     def send_frame(opcode, payload = '', first_frame = true, last_frame = true)
       opcode = OPCODES.key(opcode) if opcode.is_a? Symbol
+      raise ArgumentError 'Invalid opcode' if opcode > 127 || opcode < 0
       payload = payload.string if payload.is_a? StringIO
       payload = payload.force_encoding('BINARY')
       # "continuation" frame
