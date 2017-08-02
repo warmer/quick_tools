@@ -13,6 +13,7 @@ Harness.run_test do
   log 'Set a handler for receiving close events from the server'
   server.on(:close) do |_c, payload|
     log "Received close with #{payload.string.inspect} as server"
+    server_received = true
   end
 
   log 'Connect a client'
@@ -22,7 +23,6 @@ Harness.run_test do
   log 'Set a handler for receiving close events from the client'
   client.on(:close) do |_c, payload|
     log "Received close with #{payload.string.inspect} as client"
-    server_received = true
   end
 
   log 'Send a close from the server to the client'

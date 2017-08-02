@@ -7,17 +7,13 @@ Harness.run_test do
 
   client_received = server_disconnected = false
 
+
   log 'Start websocket server'
   server = start_websocket_server
 
   log 'Set a handler for receiving close events from the server'
   server.on(:close) do |_c, payload|
     log "Received close with #{payload.string.inspect} as server"
-  end
-
-  log 'Set a handler for receiving server connect and disconnect events'
-  server.on(:client_connect) do |_client|
-    log 'Server has connected to a client'
   end
 
   server.on(:client_disconnect) do |_client|

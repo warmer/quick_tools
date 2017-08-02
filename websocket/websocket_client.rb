@@ -289,7 +289,7 @@ module WebSocket
       @closing = true if OPCODES[opcode] == :close
 
       @socket.send(ws_header.string, 0)
-      @socket.send(payload, 0)
+      @socket.send(payload, 0) unless payload.empty?
     end
 
     # Connect, as a client, to the given host:port and path
@@ -367,7 +367,7 @@ module WebSocket
             end
           else
             response_line = line
-            proto, code, msg = response_line.split(' ')
+            proto, code, msg = response_line.split(' ', 3)
             raise "Unsupported protocol: #{proto.inspect}" unless proto == 'HTTP/1.1'
             raise "Invalid response code: #{code.inspect}" unless code == '101'
             raise "Invalid HTTP message: #{msg.inspect}" if msg.nil? || msg.empty?
@@ -383,6 +383,8 @@ module WebSocket
         logger.error e.message
         logger.info 'Client shutting down'
         socket.close unless socket.closed?
+        # re-raise the exception
+        raise e
       end
 
       self.new(socket,
