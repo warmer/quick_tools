@@ -23,7 +23,9 @@ Harness.run_test do
     client = connect_client
     client.serve!
     log tc[:description]
-    client.send_frame(tc[:code], tc[:payload], tc[:first], tc[:last])
+    # the server may close this before we finish sending on errors,
+    # so we catch broken pipe exceptions here
+    client.send_frame(tc[:code], tc[:payload], tc[:first], tc[:last]) rescue nil
     log 'Waiting for client connection to close'
     still_serving = Timeout::timeout(1) do
       loop do
