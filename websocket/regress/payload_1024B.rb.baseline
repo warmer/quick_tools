@@ -1,5 +1,5 @@
 ################################################################################
-# Basic client and server connectivity test                                    #
+# Client and server both send text payloads of 1024B                           #
 ################################################################################
 
 Start websocket server
@@ -7,9 +7,9 @@ Set a handler for receiving text on the server
 Connect a client
 Set a handler for receiving text on the client
 Send text from the client to the server
-Received Hello? as server
+Server message matches? true
 Send text from the server back to the client
-Received Hello! as client
+Client message matches? true
 Stop the client
 
 ################################################################################
@@ -18,6 +18,6 @@ Stop the client
 
 INFO    Listening on localhost:[WEBSOCKET_PORT]
 INFO    Received websocket key, establishing connection
-INFO    Payload size: 6 B
-INFO    Payload size: 6 B
+INFO    Payload size: 1024 B
+INFO    Payload size: 1024 B
 WARN    Socket closed during frame header read

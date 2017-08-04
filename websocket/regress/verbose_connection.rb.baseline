@@ -38,4 +38,5 @@ Stop websocket server
 
 INFO    Listening on localhost:[WEBSOCKET_PORT]
 INFO    Received websocket key, establishing connection
+WARN    Socket closed during frame header read
 INFO    Stopping WebSocket server

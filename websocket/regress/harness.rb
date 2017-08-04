@@ -18,7 +18,12 @@ class Harness
 
   def self.run_test(opts = {}, &blk)
     harness = Harness.new(opts)
-    harness.instance_exec(&blk)
+    begin
+      harness.instance_exec(&blk)
+    rescue => e
+      harness.log "#{e.class}: #{e.message}"
+      harness.log e.backtrace.join("\n")
+    end
     harness.log
     harness.scenario 'Client and server logs:'
     harness.log(harness.websocket_log.string)

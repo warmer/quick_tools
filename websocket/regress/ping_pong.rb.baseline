@@ -25,3 +25,4 @@ INFO    Payload size: 6 B
 INFO    Payload size: 6 B
 INFO    Payload size: 12 B
 INFO    Payload size: 12 B
+WARN    Socket closed during frame header read

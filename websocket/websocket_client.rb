@@ -126,9 +126,12 @@ module WebSocket
 
           # The first two bytes in any frame always include the header byte
           # and the frame length
-          header, len = @socket.recv(2).unpack('C*')
-          # a connection may be closed by the client and recv will still return
-          break unless header && len
+          header, len = @socket.recv(2, Socket::MSG_WAITALL).unpack('C*')
+          unless header && len
+            @logger.warn 'Socket closed during frame header read'
+            @socket.close
+            break
+          end
           # FIN is set when this is either a control message or the last frame
           # in a fragmented message
           last_frame = (header & (1 << 7)) > 0
@@ -201,19 +204,36 @@ module WebSocket
           payload_size = (len & 0x7f)
           if payload_size == 126
             # unpack as network-order 16-bit unsigned integer
-            payload_size = @socket.recv(2).unpack('n').first
+            payload_size = @socket.recv(2, Socket::MSG_WAITALL).unpack('n').first
           elsif payload_size == 127
             # unpack as two network-order 32-bit unsigned integers
-            size_words = @socket.recv(8).unpack('N')
+            size_words = @socket.recv(8, Socket::MSG_WAITALL).unpack('NN')
+            @logger.info size_words.inspect
             # append the integers for the full length
-            payload_size = size_words[0] << 32 + size_words[1]
+            payload_size = (size_words[0] << 32) + size_words[1]
+          end
+
+          # payload size can be nil when there otherwise aren't error when the
+          # socket is closed during a transmission of length
+          if payload_size.nil?
+            @logger.error 'Socket closed unexpectedly during length transfer'
+            @socket.close
+            break
           end
           @logger.info "Payload size: #{payload_size} B"
 
           # If the 'MASK' bit was set, then 4 bytes are provided to the server
           # to be used as an XOR mask for incoming bytes
           # These bytes do *not* count against the payload size
-          mask = is_masked ? @socket.recv(4).unpack('C*') : nil
+          mask = is_masked ? @socket.recv(4, Socket::MSG_WAITALL).unpack('C*') : nil
+
+          # if the socket were closed during transmission, we may only
+          # have a partial mask
+          if is_masked && mask.length < 4
+            @logger.error 'Socket closed unexpectedly during mask transfer'
+            @socket.close
+            break
+          end
 
           # Receive the entire payload
           # NOTE that this would need to be done differently to handle large
@@ -221,14 +241,24 @@ module WebSocket
           # making us vulnerable to clients sending large payloads
           payload = StringIO.new
           payload.set_encoding('BINARY')
-          while payload_size > 0
+          payload_remaining = payload_size
+          while payload_remaining > 0
             # read the payload in chunks
-            to_read = [1024, payload_size].min
-            payload_size -= to_read
+            to_read = [1024, payload_remaining].min
 
-            data = @socket.recv(to_read).unpack('C*')
+            data = @socket.recv(to_read, Socket::MSG_WAITALL).unpack('C*')
+            payload_remaining -= data.length
+
+            break unless data.length > 0
+
             data = data.each_with_index.map {|b, idx| b ^ mask[idx & 3] } if mask
             payload.write data.pack('C*')
+          end
+
+          unless payload.length == payload_size
+            @logger.error 'Socket closed unexpectedly during message transfer'
+            @socket.close
+            break
           end
 
           emit(opcode_type, payload)
@@ -273,7 +303,7 @@ module WebSocket
         ws_header.write([payload.length].pack('n'))
       else
         ws_header.write((127 | payload_len).chr)
-        len = [(payload.length >> 32), (payload.length & 0xffffffff)].pack('N')
+        len = [(payload.length >> 32), (payload.length & 0xffffffff)].pack('NN')
         ws_header.write(len)
       end
 
@@ -383,6 +413,7 @@ module WebSocket
         raise 'Invalid WebSocket acceptance' unless acceptance == websocket_accept
       rescue => e
         logger.error e.message
+        logger.debug e.backtrace
         logger.info 'Client shutting down'
         socket.close unless socket.closed?
         # re-raise the exception

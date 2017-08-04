@@ -3,7 +3,7 @@
 require_relative 'harness.rb'
 
 Harness.run_test do
-  scenario 'Basic client and server connectivity test'
+  scenario 'Client and server both send text payloads of 127B'
 
   server_received = client_received = false
 
@@ -14,7 +14,7 @@ Harness.run_test do
   server.on(:text) do |conn, payload|
     log "Received #{payload.string} as server"
     log 'Send text from the server back to the client'
-    conn.send_frame(1, 'Hello!')
+    conn.send_frame(1, ('Hello' * 25) + '!!')
     server_received = true
   end
 
@@ -27,7 +27,7 @@ Harness.run_test do
     client_received = true
   end
   log 'Send text from the client to the server'
-  client.send_frame(1, 'Hello?')
+  client.send_frame(1, ('HiHi?' * 25) + '??')
 
   # Wait for activity on both the client and the server to complete
   Timeout::timeout(1) do
