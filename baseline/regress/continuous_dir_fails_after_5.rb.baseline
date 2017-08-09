@@ -1,0 +1,34 @@
+################################################################################
+# Run directory in continuous mode, fail after several loops                   #
+################################################################################
+
+./baseline -c tests/nested/double-nested/
+tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+tests/nested/double-nested/up_to_date.rb                              [ PASSED ]
+Passed: 2; Skipped: 1
+tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+tests/nested/double-nested/up_to_date.rb                              [ PASSED ]
+Passed: 2; Skipped: 1
+tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+tests/nested/double-nested/up_to_date.rb                              [ PASSED ]
+Passed: 2; Skipped: 1
+tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+tests/nested/double-nested/up_to_date.rb                              [ PASSED ]
+Passed: 2; Skipped: 1
+tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+tests/nested/double-nested/up_to_date.rb                              [ PASSED ]
+Passed: 2; Skipped: 1
+tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
+tests/nested/double-nested/fail_after_5.rb                            [ FAILED ]
+0a1
+> Time to be different
+tests/nested/double-nested/up_to_date.rb                              [ PASSED ]
+Passed: 1; Failed: 1; Skipped: 1
+Exiting after 6 loops
+Status code: 1
+

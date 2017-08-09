@@ -1,0 +1,8 @@
+################################################################################
+# Run directory in continuous mode silently, fail after several loops          #
+################################################################################
+
+./baseline -s -c tests/nested/double-nested/
+
+Status code: 1
+

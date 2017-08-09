@@ -1,0 +1,22 @@
+################################################################################
+# Run single test in continuous mode, fail after several loops                 #
+################################################################################
+
+./baseline -c tests/nested/double-nested/fail_after_5.rb
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+Passed: 1
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+Passed: 1
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+Passed: 1
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+Passed: 1
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
+Passed: 1
+tests/nested/double-nested/fail_after_5.rb                            [ FAILED ]
+0a1
+> Time to be different
+Failed: 1
+Exiting after 6 loops
+Status code: 1
+
