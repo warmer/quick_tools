@@ -220,6 +220,7 @@ if $PROGRAM_NAME == __FILE__
   switches = opts.select { |x| x.start_with? '-' }
   files = opts.reject { |x| x.start_with? '-' }
   options = {print_output: true, update: false}
+  continuous = false
 
   opts = OptionParser.new do |opts|
     opts.banner = "Usage: ./#{File.basename(__FILE__)} [options] FILE..."
@@ -237,6 +238,9 @@ if $PROGRAM_NAME == __FILE__
     recursive_help = 'Recursively scan any given directories for tests'
     opts.on('-r', recursive_help) { options[:recursive] = true }
 
+    continuous_help = 'Continuously run the given tests until first failure'
+    opts.on('-c', continuous_help) { continuous = true }
+
     full_diff_help = 'Adds all baseline context to any diff'
     opts.on('-f', full_diff_help) { options[:full_diff] = true }
 
@@ -250,8 +254,15 @@ if $PROGRAM_NAME == __FILE__
     exit -1
   end
 
-  results = Baseline.run_tests(files, options)
-  puts Baseline.summarize(results) unless options[:silent]
-  failures = results.select {|result| result[:status] == :failed}.count
+  failures = 0
+  loops = 0
+  loop do
+    loops += 1
+    results = Baseline.run_tests(files, options)
+    puts Baseline.summarize(results) unless options[:silent]
+    failures = results.select {|result| result[:status] == :failed}.count
+    break unless continuous && failures.zero?
+  end
+  puts "Exiting after #{loops} loops" if continuous && options[:silent].nil?
   exit([failures, 127].min)
 end

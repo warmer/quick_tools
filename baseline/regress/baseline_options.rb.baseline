@@ -10,6 +10,7 @@ Includes all executable files within given directories
     -q                               Quiet: do not print diff/stderr on failures
     -s                               Silent: do not print any status during testing
     -r                               Recursively scan any given directories for tests
+    -c                               Continuously run the given tests until first failure
     -f                               Adds all baseline context to any diff
     -h, -?, --help                   Show help
 Status code: 0
@@ -27,6 +28,7 @@ Includes all executable files within given directories
     -q                               Quiet: do not print diff/stderr on failures
     -s                               Silent: do not print any status during testing
     -r                               Recursively scan any given directories for tests
+    -c                               Continuously run the given tests until first failure
     -f                               Adds all baseline context to any diff
     -h, -?, --help                   Show help
 Status code: 255

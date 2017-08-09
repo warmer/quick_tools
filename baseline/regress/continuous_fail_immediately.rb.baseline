@@ -1,10 +1,9 @@
 ################################################################################
-# Run with a list of files/directories, recursive                              #
+# Run list of tests in continuous mode                                         #
 ################################################################################
 
-./baseline -r tests/*
+./baseline -c tests/*
 tests/non_executable.rb                                       [ NOT EXECUTABLE ]
-tests/nested/double-nested/no_baseline.rb                            [ MISSING ]
 tests/nested/no_baseline.rb                                          [ MISSING ]
 tests/no_baseline.rb                                                 [ MISSING ]
 tests/no_baseline_raises_error.rb                                    [ MISSING ]
@@ -23,10 +22,9 @@ tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
 tests/baselined_raises_error.rb                                       [ FAILED ]
 ======== STDERR ========
 [base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
-tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
-tests/nested/double-nested/up_to_date.rb                              [ PASSED ]
 tests/nested/up_to_date.rb                                            [ PASSED ]
 tests/up_to_date.rb                                                   [ PASSED ]
-Passed: 4; Failed: 3; Skipped: 5
+Passed: 2; Failed: 3; Skipped: 4
+Exiting after 1 loops
 Status code: 3
 

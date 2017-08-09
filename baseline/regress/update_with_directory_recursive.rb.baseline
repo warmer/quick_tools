@@ -10,6 +10,7 @@ tests/baselined_out_of_date_with_error.rb                             [ FAILED ]
 tests/baselined_raises_error.rb                                       [ FAILED ]
 ======== STDERR ========
 [base]/tests/baselined_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
+tests/nested/double-nested/fail_after_5.rb                            [ PASSED ]
 tests/nested/double-nested/no_baseline.rb                            [ UPDATED ]
 tests/nested/double-nested/up_to_date.rb                              [ PASSED ]
 tests/nested/no_baseline.rb                                          [ UPDATED ]
@@ -19,6 +20,6 @@ tests/no_baseline_raises_error.rb                                     [ FAILED ]
 ======== STDERR ========
 [base]/tests/no_baseline_raises_error.rb:4:in `<main>': Whoops! (RuntimeError)
 tests/up_to_date.rb                                                   [ PASSED ]
-Passed: 3; Failed: 3; Updated: 4
+Passed: 4; Failed: 3; Updated: 4
 Status code: 3
 
