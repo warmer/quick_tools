@@ -33,4 +33,3 @@ INFO    Payload size: 3 B
 ERROR   Socket closed unexpectedly during message transfer
 INFO    Received websocket key, establishing connection
 INFO    Payload size: 3 B
-WARN    Socket closed during frame header read

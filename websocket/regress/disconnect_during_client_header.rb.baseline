@@ -31,7 +31,6 @@ Server has disconnected from a client
 
 INFO    Listening on localhost:[WEBSOCKET_PORT]
 INFO    Received websocket key, establishing connection
-WARN    Socket closed during frame header read
 INFO    Received websocket key, establishing connection
 ERROR   Socket closed unexpectedly during length transfer
 INFO    Received websocket key, establishing connection
