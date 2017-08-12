@@ -5,8 +5,8 @@
 Start websocket server
 Set a handler for receiving close events from the server
 Connect a client
-Set a handler for receiving close events from the client
 Send a close from the server to the client
+Set a handler for receiving close events from the client
 Received close with "" as client
 Received close with "" as server
 Stop websocket server

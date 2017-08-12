@@ -16,19 +16,20 @@ Harness.run_test do
     server_received = true
   end
 
+  server.on(:client_connect) do |client|
+    log 'Send a close from the server to the client'
+    client.send_frame(:close)
+  end
+
   log 'Connect a client'
   client = connect_client
-  client.serve!
 
   log 'Set a handler for receiving close events from the client'
   client.on(:close) do |_c, payload|
     log "Received close with #{payload.string.inspect} as client"
   end
 
-  log 'Send a close from the server to the client'
-  server.connected_clients.each do |server_client|
-    server_client.send_frame(:close)
-  end
+  client.serve!
 
   # Wait for activity on both the client and the server to complete
   Timeout::timeout(1) do
