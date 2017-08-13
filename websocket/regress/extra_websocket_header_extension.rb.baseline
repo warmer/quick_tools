@@ -41,5 +41,4 @@ Stop websocket server
 INFO    Listening on localhost:[WEBSOCKET_PORT]
 INFO    Additional WebSocket headers: Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits
 INFO    Received websocket key, establishing connection
-WARN    Socket closed during frame header read
 INFO    Stopping WebSocket server

@@ -128,7 +128,7 @@ module WebSocket
           # and the frame length
           header, len = @socket.recv(2, Socket::MSG_WAITALL).unpack('C*')
           unless header && len
-            @logger.warn 'Socket closed during frame header read'
+            @logger.debug 'Socket closed during frame header read'
             @socket.close
             break
           end
