@@ -16,8 +16,7 @@ Harness.run_test do
     server_received = true
   end
 
-  server.on(:client_connect) do |client|
-    log 'Send a close from the server to the client'
+  server.on(:ping) do |client|
     client.send_frame(:close)
   end
 
@@ -30,6 +29,8 @@ Harness.run_test do
   end
 
   client.serve!
+
+  client.send_frame(:ping)
 
   # Wait for activity on both the client and the server to complete
   Timeout::timeout(1) do
