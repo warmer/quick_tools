@@ -1,0 +1,136 @@
+<html>
+  <head>
+    <title>Simple D3 Examples</title>
+    <script type="text/javascript" src="d3.min.js"></script>
+    <script type="text/javascript">
+      // Replaces JQuery's 'ready' per http://youmightnotneedjquery.com/
+      // Necessary because external JavaScript files may not be loaded
+      // before functions that depend on those files defined and otherwise
+      // ready to be called
+      function ready(fn) {
+        if (document.readyState != 'loading'){ fn() }
+        else { document.addEventListener('DOMContentLoaded', fn) }
+      }
+      // called when the page is fully loaded
+      ready(function() {
+        // helps ensure compatibility across multiple browser types
+        window.AudioContext = window.AudioContext ||
+          window.webkitAudioContext;
+        // now create and play the WAV file
+        createWav();
+      });
+
+      function createWav() {
+        // creates an in-memory WAV header
+        var header = createWavHeader();
+        // create a 440Hz SIN wave with full amplitude, 1 second long
+        var data = createSin(440, 1, 1);
+        // contains the entire WAV file, raw
+        var content = joinWavData(header, data);
+        // the context is used to play the sound
+        var context = new AudioContext();
+        // decoding is done asynchronously
+        context.decodeAudioData(content, function(buffer) {
+          // the "source" is used to actually play sounds in the browser
+          var source = context.createBufferSource();
+          // provide the buffer to the source
+          source.buffer = buffer;
+          // route the source to the browser speakers
+          source.connect(context.destination);
+          // start playing immediately
+          source.start(0);
+        });
+      }
+
+      // writes the given ASCII string into the given ArrayBuffer at the
+      // given index (offset)
+      function loadAsciiString(str, buffer, index) {
+        var bytes = new Uint8Array(buffer, index, str.length);
+        for(var i = 0; i < str.length; i++) {
+          bytes[i] = str.charCodeAt(i);
+        }
+      }
+
+      // Returns a buffer containing a valid WAV file by combining the
+      // given header and data buffers. Ensures the length fields in the
+      // header are set correctly
+      function joinWavData(header, data) {
+        // append the buffers into a new Uint8Array
+        var tmp = new Uint8Array(header.byteLength + data.byteLength);
+        tmp.set(new Uint8Array(header), 0);
+        tmp.set(new Uint8Array(data), header.byteLength);
+        // create a view of Uint32s
+        var tmp32 = new Uint32Array(tmp.buffer);
+        // update the length fields in the WAV header
+        tmp32[1] = 36 + data.byteLength;
+        tmp32[10] = data.byteLength;
+        // return the resulting buffer
+        return tmp32.buffer;
+      }
+
+      // creates a buffer of raw WAV data
+      function createSin(frequency, amplitude, duration) {
+        // ensures the amplitude remains within range
+        var amp = Math.max(Math.min(1, amplitude), 0);
+        amp = amp * Math.pow(2, 15);
+        var samples = Math.round(44100 * duration);
+        // create the raw buffer
+        var buffer = new ArrayBuffer(samples * 2);
+        // create a view into the buffer
+        var int16View = new Int16Array(buffer);
+
+        // fill in the data points
+        for(var i = 0; i < samples; i++) {
+          var arg = (2 * frequency * Math.PI * i) / 44100;
+          // always round down
+          int16View[i] = Math.floor(amp * Math.sin(arg));
+        }
+
+        return buffer;
+      }
+
+      // creates a valid WAV header
+      function createWavHeader() {
+        var sampleRate = 44100;
+        var channels = 1;
+        var bitsPerSample = 16;
+        var buffer = new ArrayBuffer(44);
+        var int32View = new Uint32Array(buffer);
+        var int16View = new Uint16Array(buffer);
+        // RIFF header
+        loadAsciiString('RIFF', buffer, 0);
+        // length (not including RIFF and length)
+        int32View[1] = 36;
+        // Format
+        loadAsciiString('WAVE', buffer, 8);
+        // Subchunk1 ID
+        loadAsciiString('fmt ', buffer, 12);
+        // Subchunk1 Size
+        int32View[4] = 16;
+        // AudioFormat
+        int16View[10] = 1;
+        // NumChannels
+        int16View[11] = channels;
+        // SampleRate
+        int32View[6] = sampleRate;
+        // ByteRate
+        int32View[7] = (sampleRate * channels * bitsPerSample) / 8;
+        // BlockAlign
+        int16View[16] = (channels * bitsPerSample) / 8;
+        // BitsPerSample
+        int16View[17] = bitsPerSample;
+
+        // Subchunk2 ID
+        loadAsciiString('data', buffer, 36);
+        // Subchunk2Size
+        int32View[10] = 0;
+
+        return buffer;
+      }
+
+    </script>
+  </head>
+  <body>
+
+  </body>
+</html>
