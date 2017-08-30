@@ -24,7 +24,9 @@
         // creates an in-memory WAV header
         var header = createWavHeader();
         // create a 440Hz SIN wave with full amplitude, 1 second long
-        var data = createSin(440, 1, 1);
+        var data = new ArrayBuffer(44100);
+        data = createSin(440, 0.5, 1, {buffer: data});
+        //var data = createSin(440, 0.1, 1);
         // contains the entire WAV file, raw
         var content = joinWavData(header, data);
         // the context is used to play the sound
@@ -51,39 +53,58 @@
         }
       }
 
+      // combines the two ArrayBuffers into one
+      function joinBuffers(buf1, buf2) {
+        // append the buffers into a new Uint8Array
+        var tmp = new Uint8Array(buf1.byteLength + buf2.byteLength);
+        tmp.set(new Uint8Array(buf1), 0);
+        tmp.set(new Uint8Array(buf2), buf1.byteLength);
+        return tmp.buffer;
+      }
+
       // Returns a buffer containing a valid WAV file by combining the
       // given header and data buffers. Ensures the length fields in the
       // header are set correctly
       function joinWavData(header, data) {
-        // append the buffers into a new Uint8Array
-        var tmp = new Uint8Array(header.byteLength + data.byteLength);
-        tmp.set(new Uint8Array(header), 0);
-        tmp.set(new Uint8Array(data), header.byteLength);
+        var tmp = joinBuffers(header, data);
         // create a view of Uint32s
-        var tmp32 = new Uint32Array(tmp.buffer);
+        var tmp32 = new Uint32Array(tmp);
         // update the length fields in the WAV header
         tmp32[1] = 36 + data.byteLength;
         tmp32[10] = data.byteLength;
         // return the resulting buffer
-        return tmp32.buffer;
+        return tmp;
       }
 
       // creates a buffer of raw WAV data
-      function createSin(frequency, amplitude, duration) {
+      function createSin(frequency, amplitude, duration, opts) {
+        opts = opts || {};
+        var phase = opts.phase || 0;
+
         // ensures the amplitude remains within range
         var amp = Math.max(Math.min(1, amplitude), 0);
         amp = amp * Math.pow(2, 15);
         var samples = Math.round(44100 * duration);
+
         // create the raw buffer
-        var buffer = new ArrayBuffer(samples * 2);
+        var buffer = opts.buffer || (new ArrayBuffer(samples * 2));
+        // if the buffer isn't big enough to hold all of the samples,
+        // create a new one and use that instead
+        if((buffer.byteLength / 2) < samples) {
+          var delta = (samples * 2) - buffer.byteLength;
+          buffer = joinBuffers(buffer, new ArrayBuffer(delta));
+        }
+
         // create a view into the buffer
         var int16View = new Int16Array(buffer);
 
         // fill in the data points
         for(var i = 0; i < samples; i++) {
-          var arg = (2 * frequency * Math.PI * i) / 44100;
+          var arg = (2 * frequency * Math.PI * i + phase) / 44100;
+          var val = int16View[i];
           // always round down
-          int16View[i] = Math.floor(amp * Math.sin(arg));
+          val = val + Math.floor(amp * Math.sin(arg));
+          int16View[i] = val;
         }
 
         return buffer;
