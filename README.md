@@ -73,6 +73,53 @@ Ruby:
 ruby -e "require 'webrick'; WEBrick::HTTPServer.new(DocumentRoot: '.', BindAddress: '127.0.0.1', Port: 8080).start"
 ```
 
+## Match pairing
+
+Given an even number `N` of players, create `N - 1` rounds where every
+player has exactly one match against every other player.
+
+```ruby
+def shuffle(a)
+  a.insert(a.size / 2, a.delete(a[1]))
+  a.insert(a.size / 2, a.pop)
+end
+
+def match(players)
+  num = players.length
+  rounds = Array.new(num - 1)  { |index| Array.new() }
+
+  (num - 1).times do |round|
+    (num / 2).times do |pair|
+      match = [players[pair], players[pair + (num/2)]]
+      rounds[round] << [match.min, match.max]
+    end
+
+    players = shuffle(players)
+  end
+  rounds
+end
+```
+
+Example 1:
+```
+pry(main)> match (0..7).to_a
+=> [[[0, 4], [1, 5], [2, 6], [3, 7]],
+ [[0, 7], [1, 2], [3, 5], [4, 6]],
+ [[0, 6], [2, 3], [1, 4], [5, 7]],
+ [[0, 5], [3, 4], [2, 7], [1, 6]],
+ [[0, 1], [4, 7], [3, 6], [2, 5]],
+ [[0, 2], [6, 7], [4, 5], [1, 3]],
+ [[0, 3], [5, 6], [1, 7], [2, 4]]]
+```
+
+Example 2:
+```
+pry(main)> match ['amy', 'fred', 'anne', 'bob']
+=> [[["amy", "anne"], ["bob", "fred"]],
+ [["amy", "bob"], ["anne", "fred"]],
+ [["amy", "fred"], ["anne", "bob"]]]
+```
+
 # Configuration Files
 
 [.vimrc](./.vimrc) - An example `.vimrc` file used for personal development
