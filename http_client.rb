@@ -1,4 +1,6 @@
 require 'net/http'
+require 'net/https'
+require 'uri'
 
 # This provides helper methods for common HTTP actions and is based on a
 # several implementations of this basic functionality written over the years.
@@ -21,12 +23,12 @@ class HttpClient
     request(Net::HTTP::Get, path, headers)
   end
 
-  def post(path, headers = {}, body = "")
-    request(Net::HTTP::Post, path, headers)
+  def post(path, body = "", headers = {})
+    request(Net::HTTP::Post, path, headers, body)
   end
 
-  def put(path, headers = {}, body = "")
-    request(Net::HTTP::Put, path, headers)
+  def put(path, body = "", headers = {})
+    request(Net::HTTP::Put, path, headers, body)
   end
 
   def delete(path, headers = {})
@@ -38,6 +40,11 @@ class HttpClient
   def request(type, path, headers, body = nil)
     uri = URI.parse("#{@base_url}#{path}")
     http = Net::HTTP.new(uri.host, uri.port)
+    if uri.scheme == 'https'
+      http.use_ssl
+      # uncomment if connecting to untrusted endpoint
+      #http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    end
     request = type.new(uri.request_uri)
     request.basic_auth @username, @password unless @username.nil?
     headers.keys.each { |k| request[k] = headers[k] }
