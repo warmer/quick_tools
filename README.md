@@ -83,3 +83,27 @@ into your home directory and add to your global git settings with:
 This is a good way to add editor-specific temp files that don't belong in
 individual projects (so you don't have to fill every project's `.gitignore`
 file with every possible editor's temporary files).
+
+## Bash Aliases
+
+Added to `~/.bash_aliases` (included via `~/.bashrc`)
+
+**`vg`**: `alias vg='valgrind --tool=memcheck --leak-check=yes --show-reachable=yes --track-origins=yes'`
+
+**`gitup`**: used for updating branch state (eg: `gitup master`) from within a repo.
+
+```bash
+function gitup() {
+  if [ $1 ]
+  then
+    echo "# git checkout ${1}"
+    git checkout $1
+    echo "# git pull upstream ${1}"
+    git pull upstream $1
+    echo "# git push"
+    git push
+    echo "# git fetch -p"
+    git fetch -p
+  fi
+}
+```
