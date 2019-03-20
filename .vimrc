@@ -38,3 +38,6 @@ set showmatch
 set incsearch
 " highlight all matches of a search pattern
 set hlsearch
+
+" enable syntax highlighting
+syntax on
